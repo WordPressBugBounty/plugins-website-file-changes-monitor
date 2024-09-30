@@ -3,7 +3,7 @@ Contributors: Melapress
 Plugin URI: https://melapress.com/wordpress-file-monitor/
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl.html
-Tags: file monitor, file integrity scanner, file security
+Tags: file monitor, file integrity scanner, file security, file scanner, file changes
 Requires at least: 5.0
 Tested up to: 6.6.2
 Stable tag: 2.0.2
@@ -132,6 +132,20 @@ If you want to help us translate this plugin in your own language please [contac
 1. Download the plugin from the [WordPress plugins repository](https://wordpress.org/plugins/website-file-changes-monitor/)
 1. Unzip the zip file and upload the `website-file-changes-monitor` folder to the `/wp-content/plugins/` directory
 1. Activate the Melapress File Monitor plugin through the 'Plugins' menu in WordPress
+
+== Frequently Asked Questions ==
+
+= Does the plugin send any data to Melapress? =
+No, the plugin does not send any data to us whatsoever. The only data we recieve is license data from the premium edition of the plugin.
+
+= Does the plugin receive updates? =
+We update the plugin fairly regularly to ensure the plugin continues to run in tip-top shape while adding new features from time to time.
+
+= Support and Documentation =
+Please refer to our [support pages](https://melapress.com/support/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mls) for all the technical and product documentation.
+
+= How can I report security bugs? =
+Please refer to our [Melapress plugins security program](https://melapress.com/plugins-security-program/).
 
 == Screenshots ==
 
