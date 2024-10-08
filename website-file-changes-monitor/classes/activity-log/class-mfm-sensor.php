@@ -1,43 +1,52 @@
 <?php
 /**
- * Sensor: My custom sensor
+ * MFM custom sensor.
  *
- * My custom sensor file.
- *
- * @package Wsal
- * @since latest
+ * @package MFM
+ * @since 2.0.0
  */
 
 declare(strict_types=1);
 
 namespace WSAL\Plugin_Sensors;
 
-use WSAL\Controllers\Alert_Manager;
-use \MFM\Helpers\Events_Helper; // phpcs:ignore
-
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! class_exists( '\WSAL\Plugin_Sensors\MFM_Sensor' ) ) {
+use WSAL\Controllers\Alert_Manager;
+use MFM\Helpers\Events_Helper;
 
+if ( ! class_exists( '\WSAL\Plugin_Sensors\MFM_Sensor' ) ) {
+	/**
+	 * Custom sensor for MFM plugin.
+	 *
+	 * @since 2.0.0
+	 */
 	class MFM_Sensor {
 
 		/**
 		 * Listening to events using hooks.
 		 * Here you can code your own custom sensors for triggering your custom events.
+		 *
+		 * @return void
+		 *
+		 * @since 2.0.0
 		 */
 		public static function init() {
-			add_action( 'mfm_file_change_event_created', array( __CLASS__, 'file_change_event' ) );
-			add_action( 'mfm_file_exceeded_size_event_created', array( __CLASS__, 'file_beyond_max_size' ) );
+			add_action( MFM_PREFIX . 'file_change_event_created', array( __CLASS__, 'file_change_event' ) );
+			add_action( MFM_PREFIX . 'file_exceeded_size_event_created', array( __CLASS__, 'file_beyond_max_size' ) );
 		}
 
 		/**
 		 * Trigger a WSAL event.
 		 *
 		 * @param array $data - Event data.
+		 *
 		 * @return void
+		 *
+		 * @since 2.0.0
 		 */
 		public static function file_change_event( $data ) {
 			if ( isset( $data['event_type'] ) ) {
@@ -71,7 +80,10 @@ if ( ! class_exists( '\WSAL\Plugin_Sensors\MFM_Sensor' ) ) {
 		 * Trigger WSAL event when a file exceeds max size.
 		 *
 		 * @param  string $path - File path.
+		 *
 		 * @return void
+		 *
+		 * @since 2.0.0
 		 */
 		public static function file_beyond_max_size( $path ) {
 			if ( isset( $data['event_type'] ) ) {

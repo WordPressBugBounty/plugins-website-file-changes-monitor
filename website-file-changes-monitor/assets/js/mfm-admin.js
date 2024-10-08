@@ -36,13 +36,16 @@ jQuery(document).ready(function() {
 				var newElem = jQuery.parseHTML('<div><h3>' + mfmJSData.wizardIntroTitle + '</h3><p>' + mfmJSData.wizardIntroText + '</p></div>');
 				jQuery('#mfm-setup-wizard-content form').append(newElem);
 				if ( mfmJSData.isWFCMDataFound ) {
-					var oldDataMarkup = jQuery.parseHTML( mfmJSData.WFCMWizardPanelMarkup );
+					var oldDataMarkup = jQuery.parseHTML( mfmJSData.MFMWizardPanelMarkup );
 					jQuery('#mfm-setup-wizard-content form').append( oldDataMarkup );
 				}
 				jQuery('#mfm-setup-wizard-content form').append(jQuery(html).find("#mfm-wizard-frequency").prop('outerHTML'));
 				jQuery('#mfm-setup-wizard-content form').append(jQuery(html).find("#mfm-wizard-enable-core").prop('outerHTML'));
 				jQuery('#mfm-setup-wizard-content form').append(jQuery(html).find("#mfm-wizard-notification").prop('outerHTML') + jQuery(html).find("#mfm-wizard-notification-when").prop('outerHTML'));
-				jQuery('#mfm-setup-wizard-content form').append(jQuery(html).find("#mfm-wizard-file-types").prop('outerHTML'));
+				jQuery('#mfm-setup-wizard-content form').append(jQuery(html).find("#mfm-wizard-ignore").prop('outerHTML'));
+				jQuery('#mfm-setup-wizard-content form').append(jQuery(html).find("#mfm-wizard-ignore-step-2").prop('outerHTML'));
+				jQuery('#mfm-setup-wizard-content form').append(jQuery(html).find("#mfm-wizard-ignore-step-3").prop('outerHTML'));
+				jQuery('#mfm-setup-wizard-content form').append(jQuery(html).find("#mfm-wizard-ignore-step-4").prop('outerHTML'));
 				jQuery('#mfm-setup-wizard-content form').append(jQuery(html).find("#mfm-wizard-purging").prop('outerHTML'));
 				var newElem = jQuery.parseHTML('<div><h3>' + mfmJSData.wizardOutroTitle + '</h3><p>' + mfmJSData.wizardOutroText + '</p></div>');
 				jQuery('#mfm-setup-wizard-content form').append(newElem);
@@ -95,6 +98,22 @@ jQuery(document).ready(function() {
 					jQuery('#mfm-wizard-controls a[href="#finish-setup"]').text('Next step');
 					jQuery('#mfm-wizard-controls a[href="#finish-setup"]').attr('href', '#next');
 					jQuery('#mfm-setup-wizard').attr('data-current-wizard-step', currentStep - 1);
+				}
+
+				var stepNo = currentStep - 1;
+
+				var currentStepID = jQuery( '[data-wizard-step="'+ stepNo +'"]').attr('id');
+
+				if ( 'mfm-wizard-notification' == currentStepID ) {
+					console.log( jQuery('[name="mfm-settings[email_notice_type]"]:checked').val() );
+					if ( 'custom' == jQuery('[name="mfm-settings[email_notice_type]"]:checked').val() ) {
+						if ( ! jQuery('#notice-email-address').val() ) {
+							jQuery('#notice-email-address').css( 'border-color', 'red' );
+							return;
+						} else {
+							jQuery('#notice-email-address').css( 'border-color', '#8c8f94' );
+						}
+					}
 				}
 
 				if (direction == '#finish-setup') {
@@ -625,12 +644,18 @@ jQuery(document).ready(function() {
 		var newElem = jQuery.parseHTML(mfmJSData.excluded_directory_markup);
 		var targetList = jQuery(this).attr('data-list-type');
 		var newItemInput = jQuery('[data-input-for=' + targetList + ']').val();
+		var currentValues = [];
+		
+		jQuery('[data-list-items-wrapper-for=' + targetList + '] label').each(function(i, obj) {
+			currentValues.push( jQuery( this ).text() );
+		});
+
 		var eventNonce = jQuery(this).attr('data-validate-setting-nonce');
 		var responseArea = jQuery('[data-validation-response-for="' + targetList + '"]');
 
 		if ('' != newItemInput) {
 			let pattern = '';
-			if (targetList == 'excluded_directories' || targetList == 'excluded_files') {
+			if (targetList == 'excluded_directories' || targetList == 'ignored_directories' || targetList == 'excluded_files') {
 				pattern = /^\s*[a-z-._\d,\s/]+\s*$/i;
 			} else if (targetList == 'excluded_file_extensions') {
 				pattern = /^\s*[a-z-._\d,\s]+\s*$/i;
@@ -639,7 +664,7 @@ jQuery(document).ready(function() {
 			var newItemInputLabel = newItemInput;
 
 			if (null === newItemInput.match(pattern)) {
-				if (targetList == 'excluded_directories') {
+				if (targetList == 'excluded_directories' || targetList == 'ignored_directories') {
 					jQuery(responseArea).find('span').text(mfmJSData.dirInvalid);
 					jQuery(responseArea).slideDown(300);
 				} else if (targetList == 'excluded_files') {
@@ -650,7 +675,25 @@ jQuery(document).ready(function() {
 					jQuery(responseArea).slideDown(300);
 				}
 			} else {
-				if (targetList == 'excluded_directories') {
+				if ( currentValues.includes( newItemInput ) ) {
+					jQuery(responseArea).find('span').text(mfmJSData.valueAlreadyExists);
+					jQuery(responseArea).slideDown(300);
+					return;
+				}
+
+				if ( targetList == 'ignored_directories' ) {
+					var excludedCurrentValues = [];		
+					jQuery('[data-list-items-wrapper-for="excluded_directories"] label').each(function(i, obj) {
+						excludedCurrentValues.push( jQuery( this ).text() );
+					});
+					if ( excludedCurrentValues.includes( newItemInput ) ) {
+						jQuery(responseArea).find('span').text(mfmJSData.dirAlreadyExcluded);
+						jQuery(responseArea).slideDown(300);
+						return;
+					}
+				}
+
+				if (targetList == 'excluded_directories' || targetList == 'included_directories') {
 					newItemInputLabel = newItemInput;
 					newItemInput = mfmJSData.basepath + newItemInput;
 				}
@@ -864,11 +907,7 @@ jQuery(document).ready(function() {
 	});
 
 	jQuery( '[name="mfm-settings[logging-enabled]"]' ).bind('change', function(e) {
-
 		if ( ! this.checked ) {
-			console.log('x');
-			console.log( this.checked );
-
 			if ( document.querySelector('.mfm-scan-is-active') ) {
 				jQuery( '#mfm-disable-logging-warning' ).slideDown( 300 );
 			} else {

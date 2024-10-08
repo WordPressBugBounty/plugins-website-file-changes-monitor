@@ -1,19 +1,34 @@
 <?php
 /**
- * Helepr class for file and directory tasks.
+ * Helper class for file and directory tasks.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
+
+declare(strict_types=1);
 
 namespace MFM\WSAL;
 
-use \MFM\Helpers\Settings_Helper; // phpcs:ignore
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
  * Utility file and directory functions.
+ *
+ * @since 2.0.0
  */
 class Init_Sensor {
 
+	/**
+	 * Init this class
+	 *
+	 * @return void
+	 *
+	 * @since 2.0.0
+	 */
 	public static function init() {
 
 		if ( class_exists( '\WSAL\Helpers\Classes_Helper' ) ) {
@@ -24,7 +39,7 @@ class Init_Sensor {
 				*
 				* @return void
 				*
-				* @since latest
+				* @since 2.0.0
 				*/
 				function () {
 					\WSAL\Helpers\Classes_Helper::add_to_class_map(
@@ -42,7 +57,7 @@ class Init_Sensor {
 				*
 				* @return void
 				*
-				* @since latest
+				* @since 2.0.0
 				*/
 				function () {
 					\WSAL\Helpers\Classes_Helper::add_to_class_map(
@@ -55,11 +70,18 @@ class Init_Sensor {
 
 			add_filter(
 				'wsal_event_type_data',
+				/**
+				* Adds new type to array.
+				*
+				* @return array
+				*
+				* @since 2.0.0
+				 */
 				function ( $types ) {
 					$new_types = array(
-						'finished'   => esc_html__( 'Finished', 'website-file-changes-monitor' ),
+						'finished' => esc_html__( 'Finished', 'website-file-changes-monitor' ),
 					);
-		
+
 					// combine the two arrays.
 					$types = array_merge( $types, $new_types );
 					return $types;
@@ -67,6 +89,13 @@ class Init_Sensor {
 			);
 
 			add_filter(
+				/**
+				* Adds new obsolete item to array.
+				*
+				* @return array
+				*
+				* @since 2.0.0
+				 */
 				'wsal_togglealerts_obsolete_events',
 				function ( $obsolete_events ) {
 					$new_events      = array(
@@ -79,6 +108,5 @@ class Init_Sensor {
 			);
 			\WSAL\Plugin_Sensors\MFM_Sensor::init();
 		}
-	} 
-
+	}
 }

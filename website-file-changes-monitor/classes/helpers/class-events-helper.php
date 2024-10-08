@@ -2,16 +2,23 @@
 /**
  * Handle logging during scans.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
+
+declare(strict_types=1);
 
 namespace MFM\Helpers;
 
-use \MFM\Helpers\Settings_Helper; // phpcs:ignore
-use \MFM\Helpers\Logger; // phpcs:ignore
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
  * Utility file and directory functions.
+ *
+ * @since 2.0.0
  */
 class Events_Helper {
 
@@ -20,7 +27,11 @@ class Events_Helper {
 	 *
 	 * @param string $types - Lookup type.
 	 * @param string $current_view - View.
-	 * @return void.
+	 * @param bool   $return_instead_of_echo - Return or echo markup.
+	 *
+	 * @return void|string.
+	 *
+	 * @since 2.0.0
 	 */
 	public static function create_event_type_label( $types, $current_view = 'all', $return_instead_of_echo = false ) {
 
@@ -48,6 +59,7 @@ class Events_Helper {
 			'plugin-directory-removed' => __( 'Plugin removed ', 'website-file-changes-monitor' ),
 			'plugin-directory-added'   => __( 'Plugin added ', 'website-file-changes-monitor' ),
 			'plugin-updated'           => __( 'Plugin updated ', 'website-file-changes-monitor' ),
+			'theme-file-added'         => __( 'Theme file(s) added ', 'website-file-changes-monitor' ),
 			'theme-file-modified'      => __( 'Theme file(s) modified ', 'website-file-changes-monitor' ),
 			'theme-file-renamed'       => __( 'Theme file(s) renamed ', 'website-file-changes-monitor' ),
 			'theme-directory-removed'  => __( 'Theme removed ', 'website-file-changes-monitor' ),
@@ -71,17 +83,16 @@ class Events_Helper {
 					}
 				}
 			}
-		} else {
-			if ( isset( $event_labels[ $types ] ) ) {
+		} elseif ( isset( $event_labels[ $types ] ) ) {
 				$label = $event_labels[ $types ];
-			}
 		}
 
 		if ( $return_instead_of_echo ) {
 			return $label;
 		} else {
-			echo '<strong>' . esc_html__( 'Event Type:', 'website-file-changes-monitor' ) . '</strong> ' . $label . '<br>'; // phpcs:ignore
-		}   }
+			echo '<strong>' . esc_html__( 'Event Type:', 'website-file-changes-monitor' ) . '</strong> ' . esc_attr( $label ) . '<br>';
+		}
+	}
 
 	/**
 	 * Create and output distinguishing label markup for use in events list.
@@ -89,19 +100,31 @@ class Events_Helper {
 	 * @param string $path - Current path.
 	 * @param array  $plugin_list - Current plugin list.
 	 * @param array  $core_file_keys - Core files list.
+	 * @param string $event_type - Current event type.
+	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
-	public static function create_list_label( $path, $plugin_list, $core_file_keys ) {
+	public static function create_list_label( $path, $plugin_list, $core_file_keys, $event_type ) {
 		$event['path'] = $path;
 		$theme_dir     = dirname( get_template_directory() );
 		if ( in_array( $event['path'], $plugin_list, true ) || strpos( $event['path'], WP_PLUGIN_DIR ) !== false ) {
-			echo '<strong style="color: blue;">' . esc_html__( 'PLUGIN', 'website-file-changes-monitor' ) . '</strong><br>';
+			?>
+				<strong style="color: blue;"><?php echo esc_html__( 'PLUGIN', 'website-file-changes-monitor' ); ?></strong><br>
+			<?php
 		} elseif ( strpos( $event['path'], $theme_dir ) !== false ) {
-			echo '<strong style="color: orange;">' . esc_html__( 'THEME', 'website-file-changes-monitor' ) . '</strong><br>';
-		} elseif ( in_array( $event['path'], $core_file_keys, true ) || trim( trailingslashit( $event['path'] ) ) === ABSPATH || (string) $path == ABSPATH || trailingslashit( (string) $path ) == ABSPATH . 'wp-includes/' || trailingslashit( (string) $path ) == ABSPATH . 'wp-admin/' ) {
-			echo '<strong style="color: red;">' . esc_html__( 'CORE', 'website-file-changes-monitor' ) . '</strong><span class="mfm-info-hint hint--right" aria-label="' . esc_html__( 'This event indicates a core file was has been modified from its expected hash', 'website-file-changes-monitor' ) . '"><span class="dashicons dashicons-warning"></span></span><br>';
+			?>
+				<strong style="color: orange;"><?php echo esc_html__( 'THEME', 'website-file-changes-monitor' ); ?></strong><br>
+			<?php
+		} elseif ( str_contains( strtolower( $event_type ), 'core' ) || in_array( $event['path'], $core_file_keys, true ) || ABSPATH === trim( trailingslashit( $event['path'] ) ) || ABSPATH === (string) $path || ABSPATH . 'wp-includes/' === trailingslashit( (string) $path ) || ABSPATH . 'wp-admin/' === trailingslashit( (string) $path ) ) {
+			?>
+				<strong style="color: red;"><?php echo esc_html__( 'CORE', 'website-file-changes-monitor' ); ?></strong><span class="mfm-info-hint hint--right" aria-label="' . esc_html__( 'This event indicates a core file was has been modified from its expected hash', 'website-file-changes-monitor' ) . '"><span class="dashicons dashicons-warning"></span></span><br>
+			<?php
 		} else {
-			echo '<strong style="color: grey;">' . esc_html__( 'OTHER', 'website-file-changes-monitor' ) . '</strong><br>';
+			?>
+				<strong style="color: grey;"><?php echo esc_html__( 'OTHER', 'website-file-changes-monitor' ); ?></strong><br>
+			<?php
 		}
 	}
 
@@ -111,7 +134,10 @@ class Events_Helper {
 	 * @param array  $items - Event items.
 	 * @param string $current_view - Current view.
 	 * @param int    $event_id - Event ID.
+	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function create_file_list( $items, $current_view, $event_id ) {
 		foreach ( $items as $type => $item ) {
@@ -143,17 +169,19 @@ class Events_Helper {
 				}
 
 				$expander_needed = true;
-				$item_class = '';
+				$item_class      = '';
 				foreach ( $file_array as $change_type => $changes ) {
 					if ( count( $changes ) < 3 ) {
 						$expander_needed = false;
-						$item_class = 'expanded';
+						$item_class      = 'expanded';
 					}
 				}
 
 				if ( $expander_needed ) {
-					echo '<span data-expand-list-wrapper><a href="#" data-expand-list class="hint--right" aria-label="' . esc_html__( 'Click to view changes', 'website-file-changes-monitor' ) . '"><span class="dashicons dashicons-arrow-right-alt"></span></a>' . esc_attr( $expand_string ) . '</span>';
-				}		
+					?>
+						<span data-expand-list-wrapper><a href="#" data-expand-list class="hint--right" aria-label="<?php echo esc_html__( 'Click to view changes', 'website-file-changes-monitor' ); ?>"><span class="dashicons dashicons-arrow-right-alt"></span></a><?php echo esc_attr( $expand_string ); ?></span>
+					<?php
+				}
 
 				foreach ( $file_array as $change_type => $changes ) {
 					if ( ! is_array( $changes ) ) {
@@ -162,23 +190,27 @@ class Events_Helper {
 
 					foreach ( $changes as $file ) {
 						if ( 'additional_external_data' === $file ) {
-							echo '<span><span data-additional-prefix-holder>' . esc_html__( 'Additional changes found:', 'website-file-changes-monitor' ) . '</span> <a href="#" data-mfm-load-further-changes="' . esc_attr( $event_id ) . '" data-nonce="' . esc_attr( wp_create_nonce( 'mfm_load_extra_metadata' ) ) . '">' . esc_html__( 'Load additional changes', 'website-file-changes-monitor' ) . '</a> <span class="mfm-action-spinner"><div class="icon-spin"><span class="dashicons dashicons-admin-generic"></span></div></span></span>';
+							?>
+								<span><span data-additional-prefix-holder><?php echo esc_html__( 'Additional changes found:', 'website-file-changes-monitor' ); ?></span> <a href="#" data-mfm-load-further-changes="<?php echo esc_attr( $event_id ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( MFM_PREFIX . 'load_extra_metadata' ) ); ?>"><?php echo esc_html__( 'Load additional changes', 'website-file-changes-monitor' ); ?></a> <span class="mfm-action-spinner"><div class="icon-spin"><span class="dashicons dashicons-admin-generic"></span></div></span></span>
+							<?php
 						} else {
 							if ( 'all' !== $current_view ) {
 								if ( $change_type !== $current_view ) {
 									continue;
 								}
 							}
-							echo '<span class="mfm-list-item ' . esc_attr( $item_class ) . '">File ' . esc_attr( ucfirst( $change_type ) ) . ': ' . esc_attr( str_replace( ABSPATH, '', $file ) ) . ' <div class="mfm_file_actions_panel"><a href="#" data-mfm-update-setting data-exclude-file="' . esc_attr( $file ) . '" class="hint--left" aria-label="Exclude file from future  scans"><span class="dashicons dashicons-insert"></span></a></div></span>';
+							?>
+								<span class="mfm-list-item <?php echo esc_attr( $item_class ); ?>"><?php echo esc_html__( 'File', 'website-file-changes-monitor' ); ?> <?php echo esc_attr( ucfirst( $change_type ) ); ?>: <?php echo esc_attr( str_replace( ABSPATH, '', $file ) ); ?> <div class="mfm_file_actions_panel"><a href="#" data-mfm-update-setting data-exclude-file="<?php echo esc_attr( $file ); ?>" class="hint--left" aria-label="Ignore file from future scans"><span class="dashicons dashicons-insert"></span></a></div></span>
+							<?php
 						}
 					}
 				}
+			} elseif ( is_array( $file_array ) && empty( $file_array ) ) {
+				?>
+					<span data-empty-dir-wrapper><?php echo esc_html__( 'Empty directory', 'website-file-changes-monitor' ); ?></span>
+				<?php
 			} else {
-				if ( is_array( $file_array ) && empty( $file_array ) ) {
-					echo '<span data-empty-dir-wrapper>' . esc_html__( 'Empty directory', 'website-file-changes-monitor' ) . '</span>';
-				} else {
-					echo wp_kses_post( $file_array );
-				}
+				echo wp_kses_post( $file_array );
 			}
 		}
 	}

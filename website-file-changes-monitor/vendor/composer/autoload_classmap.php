@@ -16,6 +16,7 @@ return array(
     'MFM\\Helpers\\Emailer' => $baseDir . '/classes/helpers/class-emailer.php',
     'MFM\\Helpers\\Events_Helper' => $baseDir . '/classes/helpers/class-events-helper.php',
     'MFM\\Helpers\\Logger' => $baseDir . '/classes/helpers/class-logger.php',
+    'MFM\\Helpers\\Setting_Validator' => $baseDir . '/classes/helpers/class-setting-validator.php',
     'MFM\\Helpers\\Settings_Helper' => $baseDir . '/classes/helpers/class-settings-helper.php',
     'MFM\\MFM_Fast_Cache' => $baseDir . '/classes/class-fast-cache.php',
     'MFM\\Plugins_And_Themes_Monitor' => $baseDir . '/classes/class-plugins-and-themes-monitor.php',

@@ -2,23 +2,35 @@
 /**
  * Handle and help with settings..
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
+
+declare(strict_types=1);
 
 namespace MFM\Helpers;
 
-use \MFM\DB_Handler; // phpcs:ignore
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use MFM\DB_Handler;
+use MFM\Helpers\Setting_Validator;
+use MFM\Crons\Cron_Handler;
 
 /**
  * Utility file and directory functions.
+ *
+ * @since 2.0.0
  */
 class Settings_Helper {
-
-
 	/**
 	 * Array of settings.
 	 *
 	 * @var array
+	 *
+	 * @since 2.0.0
 	 */
 	private static $settings = array();
 
@@ -30,6 +42,8 @@ class Settings_Helper {
 	 * monitoring scan.
 	 *
 	 * @var string
+	 *
+	 * @since 2.0.0
 	 */
 	public static $site_content = 'site-content';
 
@@ -38,7 +52,10 @@ class Settings_Helper {
 	 *
 	 * @param string $setting - Setting name.
 	 * @param mixed  $default_value - Default setting value.
+	 *
 	 * @return mixed
+	 *
+	 * @since 2.0.0
 	 */
 	public static function get_setting( $setting, $default_value = false ) {
 		if ( ! isset( self::$settings[ $setting ] ) ) {
@@ -53,28 +70,85 @@ class Settings_Helper {
 	}
 
 	/**
+	 * Get setting but cache it incase we need it again soon.
+	 *
+	 * @param string $setting - Setting name.
+	 * @param mixed  $default_value - Default setting value.
+	 *
+	 * @return mixed
+	 *
+	 * @since 2.1.0
+	 */
+	public static function get_setting_cached( $setting, $default_value = false ) {
+		$setting_value = wp_cache_get( MFM_PREFIX . 'setting_cache_' . $setting );
+		if ( false === $setting_value ) {
+			$setting_value = self::get_setting( $setting, $default_value );
+			wp_cache_set( MFM_PREFIX . 'setting_cache_' . $setting, $setting_value, '', 60 );
+		}
+
+		return $setting_value;
+	}
+
+	/**
+	 * Get site option but cache it incase we need it again soon.
+	 *
+	 * @param string $setting - Setting name.
+	 * @param mixed  $default_value - Default setting value.
+	 *
+	 * @return mixed
+	 *
+	 * @since 2.1.0
+	 */
+	public static function get_site_option_cached( $setting, $default_value = false ) {
+		$setting_value = wp_cache_get( MFM_PREFIX . 'site_option_cache_' . $setting );
+		if ( false === $setting_value ) {
+			$setting_value = get_site_option( $setting, $default_value );
+			wp_cache_set( MFM_PREFIX . 'site_option_cache_' . $setting, $setting_value, '', 60 );
+		}
+
+		return $setting_value;
+	}
+
+	/**
 	 * Save plugin setting.
 	 *
 	 * @param string $setting - Setting name.
 	 * @param mixed  $value   - Setting value.
+	 *
+	 * @return bool - Did save or not.
+	 *
+	 * @since 2.0.0
 	 */
 	public static function save_setting( $setting, $value ) {
-
 		if ( 'logging-enabled' === $setting && 'no' === $value ) {
 			if ( 'yes' === get_site_option( MFM_PREFIX . $setting ) ) {
 				DB_Handler::cancel_current_scan();
 			}
 		}
 
+		// Validate and sanitize.
+		$value = Setting_Validator::validate( $setting, $value );
+
+		if ( false === $value ) {
+			return false;
+		}
+
 		update_site_option( MFM_PREFIX . $setting, $value, false );
 		self::$settings[ $setting ] = $value;
-		delete_transient( MFM_PREFIX . 'options' );
+		delete_transient( MFM_PREFIX . 'next_scan_time' );
+		wp_clear_scheduled_hook( Cron_Handler::$schedule_hook );
+
+		return true;
 	}
 
 	/**
 	 * Remove plugin setting.
 	 *
 	 * @param string $setting - Setting name.
+	 *
+	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function delete_setting( $setting ) {
 		delete_site_option( MFM_PREFIX . $setting );
@@ -84,8 +158,11 @@ class Settings_Helper {
 	/**
 	 * Get default value for a given setting,
 	 *
-	 * @param string $setting_key - Lookiup key.
+	 * @param string $setting_key - Lookup key.
+	 *
 	 * @return mixed - Value
+	 *
+	 * @since 2.0.0
 	 */
 	public static function get_settings_default_value( $setting_key ) {
 		$content_dir                 = trailingslashit( WP_CONTENT_DIR );
@@ -100,11 +177,12 @@ class Settings_Helper {
 			'scan-frequency'               => 'daily',
 			'scan-hour'                    => '02',
 			'scan-day'                     => '1',
-			'scan-date'                    => '01',
-
+			'scan-date'                    => '1',
+			'scan-hour-am'                 => 'AM',
 			'base_paths_to_scan'           => $base_paths_to_scan,
 			'excluded_file_extensions'     => $default_excluded_extensions,
 			'excluded_directories'         => $default_excluded_dirs,
+			'ignored_directories'          => array(),
 			'excluded_files'               => $default_excluded_files,
 			'allowed-in-core-dirs'         => array(),
 			'allowed-in-core-files'        => array(
@@ -133,6 +211,9 @@ class Settings_Helper {
 			'scan-files-with-no-extension' => 'yes',
 			'max-file-size'                => 5,
 			'purge-length'                 => 1,
+			'use_custom_from_email'        => 'default_email',
+			'from-email'                   => '',
+			'from-display-name'            => '',
 		);
 
 		return ( 'all' === $setting_key ) ? $defaults : $defaults[ $setting_key ];
@@ -142,6 +223,8 @@ class Settings_Helper {
 	 * Get all the MFM settings.
 	 *
 	 * @return array - Current settings.
+	 *
+	 * @since 2.0.0
 	 */
 	public static function get_mfm_settings() {
 		return array(
@@ -150,9 +233,11 @@ class Settings_Helper {
 			'scan-hour'                    => self::get_setting( 'scan-hour', self::get_settings_default_value( 'scan-hour' ) ),
 			'scan-day'                     => self::get_setting( 'scan-day', self::get_settings_default_value( 'scan-day' ) ),
 			'scan-date'                    => self::get_setting( 'scan-date', self::get_settings_default_value( 'scan-date' ) ),
+			'scan-hour-am'                 => self::get_setting( 'scan-hour-am', self::get_settings_default_value( 'scan-hour-am' ) ),
 			'base_paths_to_scan'           => self::get_setting( 'base_paths_to_scan', self::get_settings_default_value( 'base_paths_to_scan' ) ),
 			'excluded_file_extensions'     => self::get_setting( 'excluded_file_extensions', self::get_settings_default_value( 'excluded_file_extensions' ) ),
 			'excluded_directories'         => self::get_setting( 'excluded_directories', self::get_settings_default_value( 'excluded_directories' ) ),
+			'ignored_directories'          => self::get_setting( 'ignored_directories', self::get_settings_default_value( 'ignored_directories' ) ),
 			'excluded_files'               => self::get_setting( 'excluded_files', self::get_settings_default_value( 'excluded_files' ) ),
 			'allowed-in-core-dirs'         => self::get_setting( 'allowed-in-core-dirs', self::get_settings_default_value( 'allowed-in-core-dirs' ) ),
 			'allowed-in-core-files'        => self::get_setting( 'allowed-in-core-files', self::get_settings_default_value( 'allowed-in-core-files' ) ),
@@ -168,7 +253,9 @@ class Settings_Helper {
 			'max-file-size'                => self::get_setting( 'max-file-size', self::get_settings_default_value( 'max-file-size' ) ),
 			'scan-files-with-no-extension' => self::get_setting( 'scan-files-with-no-extension', self::get_settings_default_value( 'scan-files-with-no-extension' ) ),
 			'purge-length'                 => self::get_setting( 'purge-length', self::get_settings_default_value( 'purge-length' ) ),
-
+			'use_custom_from_email'        => self::get_setting( 'use_custom_from_email', self::get_settings_default_value( 'use_custom_from_email' ) ),
+			'from-email'                   => self::get_setting( 'from-email', self::get_settings_default_value( 'from-email' ) ),
+			'from-display-name'            => self::get_setting( 'from-display-name', self::get_settings_default_value( 'from-display-name' ) ),
 		);
 	}
 
@@ -176,6 +263,8 @@ class Settings_Helper {
 	 * Is AM or PM?
 	 *
 	 * @return bool True is current WordPress time format is an AM/PM
+	 *
+	 * @since 2.0.0
 	 */
 	public static function is_time_format_am_pm() {
 		return ( 1 === preg_match( '/[aA]$/', get_option( 'time_format' ) ) );
@@ -185,6 +274,8 @@ class Settings_Helper {
 	 * Get desired email address for use in the notification.
 	 *
 	 * @return string - email to use.
+	 *
+	 * @since 2.0.0
 	 */
 	public static function get_notification_email() {
 		if ( 'admin' !== self::get_setting( 'email_notice_type', 'admin' ) && ! empty( self::get_setting( 'custom_email_address', '' ) ) ) {
@@ -201,11 +292,11 @@ class Settings_Helper {
 	 * report strings should always be as statically defined here.
 	 *
 	 * @return string
+	 *
+	 * @since 2.0.0
 	 */
 	public static function get_system_info() {
 		// System info.
-		global $wpdb;
-
 		$sysinfo = '### System Info → Begin ###' . "\n\n";
 
 		// Start with the basics.
@@ -255,11 +346,11 @@ class Settings_Helper {
 
 		// Must-use plugins.
 		// NOTE: MU plugins can't show updates!
-		$muplugins = get_mu_plugins();
-		if ( count( $muplugins ) > 0 ) {
+		$must_use_plugins = get_mu_plugins();
+		if ( count( $must_use_plugins ) > 0 ) {
 			$sysinfo .= "\n" . '-- Must-Use Plugins --' . "\n\n";
 
-			foreach ( $muplugins as $plugin => $plugin_data ) {
+			foreach ( $must_use_plugins as $plugin => $plugin_data ) {
 				$sysinfo .= $plugin_data['Name'] . ': ' . $plugin_data['Version'] . "\n";
 			}
 		}
@@ -271,7 +362,7 @@ class Settings_Helper {
 		$active_plugins = get_option( 'active_plugins', array() );
 
 		foreach ( $plugins as $plugin_path => $plugin ) {
-			if ( ! in_array( $plugin_path, $active_plugins ) ) { // phpcs:ignore
+			if ( ! in_array( $plugin_path, $active_plugins, true ) ) {
 				continue;
 			}
 
@@ -283,7 +374,7 @@ class Settings_Helper {
 		$sysinfo .= "\n" . '-- WordPress Inactive Plugins --' . "\n\n";
 
 		foreach ( $plugins as $plugin_path => $plugin ) {
-			if ( in_array( $plugin_path, $active_plugins ) ) { // phpcs:ignore
+			if ( in_array( $plugin_path, $active_plugins, true ) ) {
 				continue;
 			}
 
@@ -314,7 +405,6 @@ class Settings_Helper {
 		// Server configuration.
 		$sysinfo .= "\n" . '-- Webserver Configuration --' . "\n\n";
 		$sysinfo .= 'PHP Version:              ' . PHP_VERSION . "\n";
-		$sysinfo .= 'MySQL Version:            ' . $wpdb->db_version() . "\n";
 
 		$server_software = isset( $_SERVER['SERVER_SOFTWARE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['SERVER_SOFTWARE'] ) ) : false;
 
@@ -354,83 +444,111 @@ class Settings_Helper {
 		return $sysinfo;
 	}
 
-			/**
-		 * Date format based on WordPress date settings. It can be optionally sanitized to get format compatible with
-		 * JavaScript date and time picker widgets.
-		 *
-		 * Note: This function must not be used to display actual date and time values anywhere. For that use function GetDateTimeFormat.
-		 *
-		 * @param bool $sanitized If true, the format is sanitized for use with JavaScript date and time picker widgets.
-		 *
-		 * @return string
-		 */
-		public static function get_date_format( $sanitized = false ) {
-			if ( $sanitized ) {
-				return 'Y-m-d';
-			}
-
-			return get_option( 'date_format' );
+	/**
+	 * Date format based on WordPress date settings. It can be optionally sanitized to get format compatible with
+	 * JavaScript date and time picker widgets.
+	 *
+	 * Note: This function must not be used to display actual date and time values anywhere. For that use function GetDateTimeFormat.
+	 *
+	 * @param bool $sanitized If true, the format is sanitized for use with JavaScript date and time picker widgets.
+	 *
+	 * @return string
+	 *
+	 * @since 2.0.0
+	 */
+	public static function get_date_format( $sanitized = false ) {
+		if ( $sanitized ) {
+			return 'Y-m-d';
 		}
 
-		/**
-		 * Time format based on WordPress date settings. It can be optionally sanitized to get format compatible with
-		 * JavaScript date and time picker widgets.
-		 *
-		 * Note: This function must not be used to display actual date and time values anywhere. For that use function GetDateTimeFormat.
-		 *
-		 * @param bool $sanitize If true, the format is sanitized for use with JavaScript date and time picker widgets.
-		 *
-		 * @return string
-		 */
-		public static function get_time_format( $sanitize = false ) {
-			$result = get_option( 'time_format' );
-			if ( $sanitize ) {
-				$search  = array( 'a', 'A', 'T', ' ' );
-				$replace = array( '', '', '', '' );
-				$result  = str_replace( $search, $replace, $result );
-			}
+		return get_option( 'date_format' );
+	}
 
-			return $result;
+	/**
+	 * Time format based on WordPress date settings. It can be optionally sanitized to get format compatible with
+	 * JavaScript date and time picker widgets.
+	 *
+	 * Note: This function must not be used to display actual date and time values anywhere. For that use function GetDateTimeFormat.
+	 *
+	 * @param bool $sanitize If true, the format is sanitized for use with JavaScript date and time picker widgets.
+	 *
+	 * @return string
+	 *
+	 * @since 2.0.0
+	 */
+	public static function get_time_format( $sanitize = false ) {
+		$result = get_option( 'time_format' );
+		if ( $sanitize ) {
+			$search  = array( 'a', 'A', 'T', ' ' );
+			$replace = array( '', '', '', '' );
+			$result  = str_replace( $search, $replace, $result );
 		}
 
-		/**
-		 * Determines datetime format to be displayed in any UI in the plugin (logs in administration, emails, reports,
-		 * notifications etc.).
-		 *
-		 * Note: Format returned by this function is not compatible with JavaScript date and time picker widgets. Use
-		 * functions GetTimeFormat and GetDateFormat for those.
-		 *
-		 * @param bool $line_break             - True if line break otherwise false.
-		 * @param bool $use_nb_space_for_am_pm - True if non-breakable space should be placed before the AM/PM chars.
-		 *
-		 * @return string
-		 */
-		public static function get_datetime_format( $line_break = true, $use_nb_space_for_am_pm = true ) {
-			$result = self::get_date_format();
+		return $result;
+	}
 
-			$result .= $line_break ? '<\b\r>' : ' ';
+	/**
+	 * Determines datetime format to be displayed in any UI in the plugin (logs in administration, emails, reports,
+	 * notifications etc.).
+	 *
+	 * Note: Format returned by this function is not compatible with JavaScript date and time picker widgets. Use
+	 * functions GetTimeFormat and GetDateFormat for those.
+	 *
+	 * @param bool $line_break             - True if line break otherwise false.
+	 * @param bool $use_nb_space_for_am_pm - True if non-breakable space should be placed before the AM/PM chars.
+	 *
+	 * @return string
+	 */
+	public static function get_datetime_format( $line_break = true, $use_nb_space_for_am_pm = true ) {
+		$result = self::get_date_format();
 
-			$time_format    = self::get_time_format();
-			$has_am_pm      = false;
-			$am_pm_fraction = false;
-			$am_pm_pattern  = '/(?i)(\s+A)/';
-			if ( preg_match( $am_pm_pattern, $time_format, $am_pm_matches ) ) {
-				$has_am_pm      = true;
-				$am_pm_fraction = $am_pm_matches[0];
-				$time_format    = preg_replace( $am_pm_pattern, '', $time_format );
-			}
+		$result .= $line_break ? '<\b\r>' : ' ';
 
-			// Check if the time format does not have seconds.
-			if ( false === stripos( $time_format, 's' ) ) {
-				$time_format .= ':s'; // Add seconds to time format.
-			}
-
-			if ( $has_am_pm ) {
-				$time_format .= preg_replace( '/\s/', $use_nb_space_for_am_pm ? '&\n\b\s\p;' : ' ', $am_pm_fraction );
-			}
-
-			$result .= $time_format;
-
-			return $result;
+		$time_format    = self::get_time_format();
+		$has_am_pm      = false;
+		$am_pm_fraction = false;
+		$am_pm_pattern  = '/(?i)(\s+A)/';
+		if ( preg_match( $am_pm_pattern, $time_format, $am_pm_matches ) ) {
+			$has_am_pm      = true;
+			$am_pm_fraction = $am_pm_matches[0];
+			$time_format    = preg_replace( $am_pm_pattern, '', $time_format );
 		}
+
+		// Check if the time format does not have seconds.
+		if ( false === stripos( $time_format, 's' ) ) {
+			$time_format .= ':s'; // Add seconds to time format.
+		}
+
+		if ( $has_am_pm ) {
+			$time_format .= preg_replace( '/\s/', $use_nb_space_for_am_pm ? '&\n\b\s\p;' : ' ', $am_pm_fraction );
+		}
+
+		$result .= $time_format;
+
+		return $result;
+	}
+
+	/**
+	 * Get and return next scan time.
+	 *
+	 * @return string - Next scan time.
+	 *
+	 * @since 2.1.0
+	 */
+	public static function get_next_scan_time() {
+		$current_value = get_transient( MFM_PREFIX . 'next_scan_time' );
+		if ( ! $current_value || empty( $current_value ) ) {
+			$scan_time_tidy = self::get_setting( 'scan-hour' ) . ':00 ' . self::get_setting( 'scan-hour-am' );
+			$next_scan_time = ( wp_next_scheduled( \MFM\Crons\Cron_Handler::$schedule_hook ) ) ? date_i18n( get_option( 'date_format' ), wp_next_scheduled( \MFM\Crons\Cron_Handler::$schedule_hook ) ) . ' at ' . esc_attr( $scan_time_tidy ) . '' : 'Not scheduled';
+
+			if ( ! empty( $next_scan_time ) ) {
+				set_transient( MFM_PREFIX . 'next_scan_time', $next_scan_time, 3600 );
+				$current_value = $next_scan_time;
+			} else {
+				$current_value = esc_html__( 'Not scheduled', 'website-file-changes-monitor' );
+			}			
+		}
+
+		return $current_value;
+	}
 }

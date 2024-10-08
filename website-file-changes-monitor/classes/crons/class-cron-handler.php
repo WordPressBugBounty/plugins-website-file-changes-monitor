@@ -1,16 +1,26 @@
 <?php
 /**
- * Helepr class for file and directory tasks.
+ * Helper class for file and directory tasks.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
+
+declare(strict_types=1);
 
 namespace MFM\Crons;
 
-use \MFM\Helpers\Settings_Helper; // phpcs:ignore
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use MFM\Helpers\Settings_Helper;
 
 /**
  * Utility file and directory functions.
+ *
+ * @since 2.0.0
  */
 class Cron_Handler {
 
@@ -18,6 +28,8 @@ class Cron_Handler {
 	 * Instance.
 	 *
 	 * @var array
+	 *
+	 * @since 2.0.0
 	 */
 
 	protected static $instance = null;
@@ -26,6 +38,8 @@ class Cron_Handler {
 	 * View settings.
 	 *
 	 * @var array
+	 *
+	 * @since 2.0.0
 	 */
 	public static $scan_settings = array();
 
@@ -35,6 +49,8 @@ class Cron_Handler {
 	 * For testing change hour here [01 to 23]
 	 *
 	 * @var array
+	 *
+	 * @since 2.0.0
 	 */
 	private static $daily_hour = array( '04' );
 
@@ -44,6 +60,8 @@ class Cron_Handler {
 	 * For testing change date here [1 (for Monday) through 7 (for Sunday)]
 	 *
 	 * @var string
+	 *
+	 * @since 2.0.0
 	 */
 	private static $weekly_day = '1';
 
@@ -51,15 +69,10 @@ class Cron_Handler {
 	 * Schedule hook name.
 	 *
 	 * @var string
-	 */
-	public static $schedule_hook = 'mfm_monitor_file_changes';
-
-	/**
-	 * Keep track of this scan run time so we can break early before a timeout.
 	 *
-	 * @var int
+	 * @since 2.0.0
 	 */
-	private $scan_start_time = 0;
+	public static $schedule_hook = MFM_PREFIX . 'monitor_file_changes';
 
 	/**
 	 * Used to hold the max length we are willing to run a scan part for in
@@ -68,11 +81,15 @@ class Cron_Handler {
 	 * This will be set to 4 minutes is there is no time saved in database.
 	 *
 	 * @var int
+	 *
+	 * @since 2.0.0
 	 */
 	private static $scan_max_execution_time;
 
 	/**
 	 * Class constants.
+	 *
+	 * @since 2.0.0
 	 */
 	const SCAN_HOURLY       = 'hourly';
 	const SCAN_DAILY        = 'daily';
@@ -83,6 +100,10 @@ class Cron_Handler {
 
 	/**
 	 * Constructor.
+	 *
+	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function load_crons_handler() {
 		self::register_hooks();
@@ -96,36 +117,21 @@ class Cron_Handler {
 
 	/**
 	 * Register Hooks.
+	 *
+	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function register_hooks() {
-		add_filter( 'cron_schedules', array( __CLASS__, 'add_recurring_schedules' ) ); // phpcs:ignore
-	}
-
-	/**
-	 * Add BG processing schedule.
-	 *
-	 * @param  array $schedules - Current schedule.
-	 * @return array $scedules - Modified schedule.
-	 */
-	public static function cron_schedules( $schedules ) {
-		$prefix           = 'cron_';
-		$schedule_options = array(
-			'mfm_directory_runner_cron_interval' => array(
-				'display'  => '60 Seconds',
-				'interval' => '60',
-			),
-		);
-		foreach ( $schedule_options as $schedule_key => $schedule ) {
-			$schedules['mfm_directory_runner_cron_interval'] = array(
-				'interval' => $schedule['interval'],
-				'display'  => __( 'Every', 'website-file-changes-monitor' ) . ' ' . $schedule['display'],
-			);
-		}
-		return $schedules;
+		add_filter( 'cron_schedules', array( __CLASS__, 'add_recurring_schedules' ) ); // phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval
 	}
 
 	/**
 	 * Load File Change Monitor Settings.
+	 *
+	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function load_settings() {
 		self::$scan_settings = \MFM\Helpers\Settings_Helper::get_mfm_settings();
@@ -136,7 +142,7 @@ class Cron_Handler {
 			$next_hour  = $saved_hour + 1;
 			$hours      = array( $saved_hour, $next_hour );
 			foreach ( $hours as $hour ) {
-				$daily_hour[] = str_pad( $hour, 2, '0', STR_PAD_LEFT );
+				$daily_hour[] = str_pad( (string) $hour, 2, '0', STR_PAD_LEFT );
 			}
 			self::$daily_hour = $daily_hour;
 		}
@@ -149,13 +155,17 @@ class Cron_Handler {
 
 	/**
 	 * Schedule file changes monitor cron.
+	 *
+	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function schedule_file_changes_monitor() {
 		// Schedule file changes if the feature is enabled.
 		if ( is_multisite() && ! is_main_site() ) {
 			// Clear the scheduled hook if feature is disabled.
 			wp_clear_scheduled_hook( self::$schedule_hook );
-		} elseif ( 'yes' === self::$scan_settings['logging-enabled'] ) {
+		} elseif ( 'yes' === Settings_Helper::get_setting( 'logging-enabled' ) ) {
 			// Hook scheduled method.
 			add_action( self::$schedule_hook, array( __CLASS__, 'scan_file_changes' ) );
 			// Schedule event if there isn't any already.
@@ -179,13 +189,14 @@ class Cron_Handler {
 	 * Given a frequency formulates the next time that occurs and returns a
 	 * timestamp for that time to use when scheduling initial cron jobs.
 	 *
-	 * @method get_next_cron_schedule_time
-	 * @since  1.5.0
 	 * @param  string $frequency_option an option of hourly/daily/weekly.
+	 *
 	 * @return int
+	 *
+	 * @since 2.0.0
 	 */
 	private static function get_next_cron_schedule_time( $frequency_option ) {
-		$time = current_time( 'timestamp' ); // phpcs:ignore
+		$time = current_time( 'timestamp' ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 
 		// Allow for local timezones.
 		$local_timezone = wp_timezone_string();
@@ -226,7 +237,7 @@ class Cron_Handler {
 				$day_num = (int) Settings_Helper::get_setting( 'scan-day' );
 				$day     = self::convert_to_day_string( $day_num );
 
-				$next_time = strtotime( $day . ' ' . $hour . ':00 ' . ' ' . $local_timezone ); // phpcs:ignore
+				$next_time = strtotime( $day . ' ' . $hour . ':00 ' . ' ' . $local_timezone ); // phpcs:ignore Generic.Strings.UnnecessaryStringConcat.Found
 				// if that day has passed this week already then add 1 week.
 				if ( $next_time < $time ) {
 					$next_time = strtotime( '+1 week', $next_time );
@@ -241,14 +252,15 @@ class Cron_Handler {
 	}
 
 	/**
-	 * Converts a number reporesenting a day of the week into a string for it.
+	 * Converts a number representing a day of the week into a string for it.
 	 *
 	 * NOTE: 1 = Monday, 7 = Sunday but is zero corrected by subtracting 1.
 	 *
-	 * @method convert_to_day_string
-	 * @since  1.5.0
 	 * @param  int $day_num a day number.
+	 *
 	 * @return string
+	 *
+	 * @since 2.0.0
 	 */
 	private static function convert_to_day_string( $day_num ) {
 		// Scan days option.
@@ -270,9 +282,25 @@ class Cron_Handler {
 	 * Add time intervals for scheduling.
 	 *
 	 * @param  array $schedules - Array of schedules.
+	 *
 	 * @return array
+	 *
+	 * @since 2.0.0
 	 */
 	public static function add_recurring_schedules( $schedules ) {
+		$schedule_options = array(
+			MFM_PREFIX . 'directory_runner_cron_interval' => array(
+				'display'  => '60 Seconds',
+				'interval' => '60',
+			),
+		);
+		foreach ( $schedule_options as $schedule_key => $schedule ) {
+			$schedules[ MFM_PREFIX . 'directory_runner_cron_interval' ] = array(
+				'interval' => $schedule['interval'],
+				'display'  => __( 'Every', 'website-file-changes-monitor' ) . ' ' . $schedule['display'],
+			);
+		}
+
 		$schedules['tenminutes'] = array(
 			'interval' => 600,
 			'display'  => __( 'Every 10 minutes', 'website-file-changes-monitor' ),
@@ -286,6 +314,10 @@ class Cron_Handler {
 
 	/**
 	 * Scan File Changes.
+	 *
+	 * @requires void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function scan_file_changes() {
 		\MFM::start_directory_runner();

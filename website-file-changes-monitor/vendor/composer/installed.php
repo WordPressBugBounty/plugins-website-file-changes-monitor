@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'melapress/mfm',
-        'pretty_version' => 'dev-develop',
-        'version' => 'dev-develop',
-        'reference' => '6a5c83ba339f4991c876e8de0da6700df99f206d',
+        'pretty_version' => 'dev-master',
+        'version' => 'dev-master',
+        'reference' => 'eaeaac3f81d4a00d98bdeffcb799b2eaed09e95e',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -20,9 +20,9 @@
             'dev_requirement' => false,
         ),
         'melapress/mfm' => array(
-            'pretty_version' => 'dev-develop',
-            'version' => 'dev-develop',
-            'reference' => '6a5c83ba339f4991c876e8de0da6700df99f206d',
+            'pretty_version' => 'dev-master',
+            'version' => 'dev-master',
+            'reference' => 'eaeaac3f81d4a00d98bdeffcb799b2eaed09e95e',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

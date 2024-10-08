@@ -924,7 +924,7 @@
   width: 800px;
   max-height: 900px;
   align-self: center;
-  overflow: hidden;
+  overflow-x: hidden;
   padding: 30px;
   opacity: 0;
   transition: opacity 0.3s;
@@ -1133,4 +1133,7 @@ a[href="#mfm-close-wizard"] {
 }
 a[href="#mfm-close-wizard"] span {
   font-size: 22px;
+}
+.mfm-events-notice {
+  margin-left: 0 !important;
 }

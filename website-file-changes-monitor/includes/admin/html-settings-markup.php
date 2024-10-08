@@ -2,11 +2,15 @@
 /**
  * Settings View.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
 
+declare(strict_types=1);
+
+// Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly.
+	exit;
 }
 
 $mfm_settings      = \MFM\Helpers\Settings_Helper::get_mfm_settings();
@@ -94,7 +98,29 @@ $scan_date = array(
 	'30' => _x( '30', 'a day number in a given month', 'website-file-changes-monitor' ),
 );
 
-$validate_nonce = wp_create_nonce( 'mfm_validate_setting_nonce' );
+$restorable_settings = array(
+	'scan-frequency'           => __( 'Scan frequency', 'website-file-changes-monitor' ),
+	'scan-hour'                => __( 'Scan hour', 'website-file-changes-monitor' ),
+	'scan-day'                 => __( 'Scan day of week', 'website-file-changes-monitor' ),
+	'scan-hour-am'             => __( 'Scan frequency AM/PM', 'website-file-changes-monitor' ),
+	'base_paths_to_scan'       => __( 'Base paths to scan', 'website-file-changes-monitor' ),
+	'excluded_file_extensions' => __( 'Ignored file extensions', 'website-file-changes-monitor' ),
+	'excluded_directories'     => __( 'Ignored directories', 'website-file-changes-monitor' ),
+	'excluded_files'           => __( 'Ignored files', 'website-file-changes-monitor' ),
+	'ignored_directories'      => __( 'Excluded directories', 'website-file-changes-monitor' ),
+	'allowed-in-core-files'    => __( 'Files allow in core', 'website-file-changes-monitor' ),
+	'enabled-notifications'    => __( 'Enabled notifications', 'website-file-changes-monitor' ),
+	'email_notice_type'        => __( 'Use admin or custom email address', 'website-file-changes-monitor' ),
+	'email-changes-limit'      => __( 'Number of changes reported in email', 'website-file-changes-monitor' ),
+	'send-email-upon-changes'  => __( 'Send notification if changes found', 'website-file-changes-monitor' ),
+	'empty-email-allowed'      => __( 'Send notification if no changes found', 'website-file-changes-monitor' ),
+	'core-scan-enabled'        => __( 'Core scanning enabled', 'website-file-changes-monitor' ),
+	'max-file-size'            => __( 'Max file size to scan', 'website-file-changes-monitor' ),
+	'purge-length'             => __( 'Number of scans to store', 'website-file-changes-monitor' ),
+	'use_custom_from_email'    => __( 'Use custom from address', 'website-file-changes-monitor' ),
+);
+
+$validate_nonce = wp_create_nonce( MFM_PREFIX . 'validate_setting_nonce' );
 $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ? 'mfm-scan-is-active' : 'mfm-scan-is-idle';
 ?>
 
@@ -135,11 +161,8 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 									<?php
 									$use_am_pm_select  = \MFM\Helpers\Settings_Helper::is_time_format_am_pm();
 									$selected_hour     = intval( $mfm_settings['scan-hour'] );
-									$selected_day_part = $selected_hour >= 12 ? 'PM' : 'AM';
-									if ( $use_am_pm_select && 'PM' === $selected_day_part ) {
-										$selected_hour -= 12;
-									}
-									$selected_hour = str_pad( $selected_hour, 2, '0', STR_PAD_LEFT );
+									$selected_day_part = $mfm_settings['scan-hour-am'];
+									$selected_hour     = str_pad( (string) $selected_hour, 2, '0', STR_PAD_LEFT );
 									if ( $use_am_pm_select ) {
 										$scan_hours = array_slice( $scan_hours, 0, 12, true );
 									}
@@ -152,7 +175,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 									<?php if ( $use_am_pm_select ) : ?>
 										<select name="mfm-settings[scan-hour-am]">
 											<?php foreach ( array( 'AM', 'PM' ) as $value ) : ?>
-												<option value="<?php echo esc_attr( strtolower( $value ) ); ?>" <?php selected( $value, $selected_day_part ); ?>><?php echo esc_html( $value ); ?></option>
+												<option value="<?php echo esc_attr( strtolower( $value ) ); ?>" <?php selected( $value, strtoupper( $selected_day_part ) ); ?>><?php echo esc_html( $value ); ?></option>
 											<?php endforeach; ?>
 										</select>
 									<?php endif; ?>
@@ -169,127 +192,171 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 									<br />
 									<span class="description"><?php esc_html_e( 'Day', 'website-file-changes-monitor' ); ?></span>
 								</label>
-
-								<label>
-									<select name="mfm-settings[scan-date]">
-										<?php foreach ( $scan_date as $value => $html ) : ?>
-											<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $value, $mfm_settings['scan-date'] ); ?>><?php echo esc_html( $html ); ?></option>
-										<?php endforeach; ?>
-									</select>
-									<br />
-									<span class="description"><?php esc_html_e( 'Day', 'website-file-changes-monitor' ); ?></span>
-								</label>
 							</fieldset>
 						</td>
 					</tr>
 				</table>
 			</div>
 
-			<h3><?php esc_html_e( 'What should be excluded from the scans?', 'website-file-changes-monitor' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'Use the settings below to exclude folders, specific files or all files with an extension from the file changes scan. Below is also the website\'s absolute path as reference.', 'website-file-changes-monitor' ); ?></p>
+			<h3><?php esc_html_e( 'What is the website\'s absolute path?', 'website-file-changes-monitor' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'This is just for your reference. You do not need to specify it in any of the settings below.', 'website-file-changes-monitor' ); ?></p>
 			<p><?php esc_html_e( 'Website absolute path:', 'website-file-changes-monitor' ); ?> <code><?php echo esc_attr( ABSPATH ); ?></code></p>
-			<table class="form-table mfm-table">
-				<tbody><tr><th><label for="mfm-settings-exclude-dirs"><?php esc_html_e( 'Exclude all files in these directories', 'website-file-changes-monitor' ); ?></label></th>
-				<td>
-					<fieldset>
-						<div class="mfm-files-container">
-							<input class="name" type="text" data-input-for="excluded_directories">
-							<input class="button add" data-list-type="excluded_directories" type="button" value="Add" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>">
-						</div>		
+			<br>
 
-						<div class="mfm-removals mfm-validation-response" data-validation-response-for="excluded_directories"><span></span></div>
-						<br>
-
-						<div class="mfm-files-container" data-list-items-wrapper-for="excluded_directories">
-							<?php
-							if ( is_array( $mfm_settings['excluded_directories'] ) && ! empty( $mfm_settings['excluded_directories'] ) ) {
-								foreach ( $mfm_settings['excluded_directories'] as $extension => $label ) {
-									echo '<span ><input type="checkbox" name="mfm-settings[excluded_directories][]" id="' . esc_attr( $label ) . '" value="' . esc_attr( $label ) . '" checked=""><label for="' . esc_attr( $label ) . '">' . esc_attr( str_replace( ABSPATH, '', $label ) ) . '</label></span><br>';
-								}
-							}
-
-							?>
-						</div>	
-						
-						<div class="mfm-removals" data-marked-for-removal-for="excluded_directories"><span></span> <?php esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
-					</fieldset>
-				</td>
-			</tr>
-			<!-- Exclude directories -->
-			<tr>
-				<th><label for="mfm-settings-exclude-filenames"><?php esc_html_e( 'Exclude these files', 'website-file-changes-monitor' ); ?></label></th>
-				<td>
-					<fieldset>
-						<p class="description"><?php esc_html_e( 'Add the filename and extension of the file(s) you want to exclude from the scan. When you specify a filename and extension, all the files that match that name will be excluded. If you would like to exclude a specific file, specify the location and the filename. The directory path should be in relation to the website\'s root. For example:', 'website-file-changes-monitor' ); ?> <code>dir1/dir2/file.php</code></p><br>
-
-						<div class="mfm-files-container">
-							<input class="name" type="text" data-input-for="excluded_files">
-							<input class="button add" data-list-type="excluded_files" type="button" value="Add" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>">
-						</div>
-
-						<div class="mfm-removals mfm-validation-response" data-validation-response-for="excluded_files"><span></span></div>
-
-						<br>
-
-						<div class="mfm-files-container" data-list-items-wrapper-for="excluded_files">
-							<?php
-							if ( is_array( $mfm_settings['excluded_files'] ) && ! empty( $mfm_settings['excluded_files'] ) ) {
-								foreach ( $mfm_settings['excluded_files'] as $extension => $label ) {
-									echo '<span ><input type="checkbox" name="mfm-settings[excluded_files][]" id="' . esc_attr( $label ) . '" value="' . esc_attr( $label ) . '" checked=""><label for="' . esc_attr( $label ) . '">' . esc_attr( $label ) . '</label></span><br>';
-								}
-							}
-
-							?>
-						</div>
-						
-						<div class="mfm-removals" data-marked-for-removal-for="excluded_files"><span></span> <?php esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
-					</fieldset>
-				</td>
-			</tr>
-
-			</tbody></table>
-
-			<!-- Exclude filenames -->
-			<div id="mfm-wizard-file-types">
-				<h3><?php esc_html_e( 'Do you want to exclude any particular files from the scan?', 'website-file-changes-monitor' ); ?></h3>
-				<p class="description wizard-only"><?php esc_html_e( 'In this slide you can specify the extensions of file types that you would like to exclude from the scan. By default the plugin already excludes a number of file types, all of which are listed below. You can add or remove extensions from the plugin\'s settings as well.', 'website-file-changes-monitor' ); ?></p>
+			<div id="mfm-wizard-ignore">
+				<h3><?php esc_html_e( 'Which files and directories should the plugin ignore?', 'website-file-changes-monitor' ); ?></h3>
+				<p class="description"><?php esc_html_e( 'Use the settings below to specify the files or directories that the plugin should ignore. Ignored files and directories are still included in the scan but the plugin won’t report any detected changes.', 'website-file-changes-monitor' ); ?></p>
 
 				<table class="form-table mfm-table">
 					<tbody>
-					<tr>	
-						<th><label for="mfm-settings-exclude-extensions"><?php esc_html_e( 'Exclude these file types', 'website-file-changes-monitor' ); ?></label></th></label></th>
-						<td>
-							<fieldset>
-								<p class="description"><?php esc_html_e( 'Specify the extension of the file types you want to exclude. You should exclude any type of logs and backup files that tend to be very big.', 'website-file-changes-monitor' ); ?></p><br>
-								<div class="mfm-files-container">
-									<input class="name" type="text" data-input-for="excluded_file_extensions">
-									<input class="button add" data-list-type="excluded_file_extensions"  type="button" value="Add" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>">
-								</div>
+						<tr>
+							<th><label for="mfm-settings-exclude-dirs"><?php esc_html_e( 'Ignore all files in these directories', 'website-file-changes-monitor' ); ?></label></th>
+								<td>
+								<fieldset>
+									<div class="mfm-files-container">
+										<input class="name" type="text" data-input-for="excluded_directories">
+										<input class="button add" data-list-type="excluded_directories" type="button" value="Add" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>">
+									</div>		
 
-								<div class="mfm-removals mfm-validation-response" data-validation-response-for="excluded_file_extensions"><span></span></div>
+									<div class="mfm-removals mfm-validation-response" data-validation-response-for="excluded_directories"><span></span></div>
+									<br>
 
-								<br>
-								<div class="mfm-settings-grid" data-list-items-wrapper-for="excluded_file_extensions">
-									<?php
-									if ( is_array( $mfm_settings['excluded_file_extensions'] ) && ! empty( $mfm_settings['excluded_file_extensions'] ) ) {
-										foreach ( $mfm_settings['excluded_file_extensions'] as $extension => $label ) {
-											echo '<span ><input type="checkbox" name="mfm-settings[excluded_file_extensions][]" id="' . esc_attr( $label ) . '" value="' . esc_attr( $label ) . '" checked=""><label for="' . esc_attr( $label ) . '">' . esc_attr( $label ) . '</label></span>';
+									<div class="mfm-files-container" data-list-items-wrapper-for="excluded_directories">
+										<?php
+										if ( is_array( $mfm_settings['excluded_directories'] ) && ! empty( $mfm_settings['excluded_directories'] ) ) {
+											foreach ( $mfm_settings['excluded_directories'] as $extension => $label ) {
+												echo '<span ><input type="checkbox" name="mfm-settings[excluded_directories][]" id="' . esc_attr( $label ) . '" value="' . esc_attr( $label ) . '" checked=""><label for="' . esc_attr( $label ) . '">' . esc_attr( str_replace( ABSPATH, '', $label ) ) . '</label></span><br>';
+											}
 										}
-									}
-									?>
-								</div>
 
-								<div class="mfm-removals" data-marked-for-removal-for="excluded_file_extensions"><span></span> <?php esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
-							</fieldset>
-						</td>
-					</tr>
-					</tbody></table>
+										?>
+									</div>	
+									
+									<div class="mfm-removals" data-marked-for-removal-for="excluded_directories"><span></span> <?php esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
+								</fieldset>
+							</td>
+						</tr>
+					</tbody>
+				</table>
 			</div>
-			<!-- Exclude extensions -->
-			
 
-			<h3><?php esc_html_e( 'How should the plugin handles files with no extension?', 'website-file-changes-monitor' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'By default our plugin will also include files with no extension in scans, you can disable this behaviour here.', 'website-file-changes-monitor' ); ?></p>
+			<div id="mfm-wizard-ignore-step-2">
+				<h3 class="wizard-only"><?php esc_html_e( 'Which specific file(s) should the plugin ignore during a scan?', 'website-file-changes-monitor' ); ?></h3>
+				<p class="description wizard-only"><?php esc_html_e( 'Use the setting below to specify the file and extension of the files the plugin should ignore during a scan and not report the changes. This setting is also available in the plugin\'s settings page, so it can be changed at a later stage.', 'website-file-changes-monitor' ); ?></p>
+
+				<table class="form-table mfm-table">
+					<tbody>
+						<tr>
+							<th><label for="mfm-settings-exclude-filenames"><?php esc_html_e( 'Ignore these files', 'website-file-changes-monitor' ); ?></label></th>
+							<td>
+								<fieldset>
+									<p class="description"><?php esc_html_e( 'Add the filename and extension of the file(s) you want to exclude from the scan. When you specify a filename and extension, all the files that match that name will be excluded. If you would like to exclude a specific file, specify the location and the filename. The directory path should be in relation to the website\'s root. For example:', 'website-file-changes-monitor' ); ?> <code>dir1/dir2/file.php</code></p><br>
+
+									<div class="mfm-files-container">
+										<input class="name" type="text" data-input-for="excluded_files">
+										<input class="button add" data-list-type="excluded_files" type="button" value="Add" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>">
+									</div>
+
+									<div class="mfm-removals mfm-validation-response" data-validation-response-for="excluded_files"><span></span></div>
+
+									<br>
+
+									<div class="mfm-files-container" data-list-items-wrapper-for="excluded_files">
+										<?php
+										if ( is_array( $mfm_settings['excluded_files'] ) && ! empty( $mfm_settings['excluded_files'] ) ) {
+											foreach ( $mfm_settings['excluded_files'] as $extension => $label ) {
+												echo '<span ><input type="checkbox" name="mfm-settings[excluded_files][]" id="' . esc_attr( $label ) . '" value="' . esc_attr( $label ) . '" checked=""><label for="' . esc_attr( $label ) . '">' . esc_attr( $label ) . '</label></span><br>';
+											}
+										}
+
+										?>
+									</div>
+									
+									<div class="mfm-removals" data-marked-for-removal-for="excluded_files"><span></span> <?php esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
+								</fieldset>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<div id="mfm-wizard-ignore-step-3">
+				<h3 class="wizard-only"><?php esc_html_e( 'Which group of files should the plugin ignore during a scan?', 'website-file-changes-monitor' ); ?></h3>
+				<p class="description wizard-only"><?php esc_html_e( 'Use the setting below to specify the extension of files the plugin should ignore during a scan and not report the changes. This setting is also available in the plugin\'s settings page, so it can be changed at a later stage.', 'website-file-changes-monitor' ); ?></p>
+
+				<table class="form-table mfm-table">
+					<tbody>
+						<tr>	
+							<th><label for="mfm-settings-exclude-extensions"><?php esc_html_e( 'Ignore all files with these extensions', 'website-file-changes-monitor' ); ?></label></th></label></th>
+							<td>
+								<fieldset>
+									<p class="description"><?php esc_html_e( 'Specify the extension of the file types you want to exclude. You should exclude any type of logs and backup files that tend to be very big.', 'website-file-changes-monitor' ); ?></p><br>
+									<div class="mfm-files-container">
+										<input class="name" type="text" data-input-for="excluded_file_extensions">
+										<input class="button add" data-list-type="excluded_file_extensions"  type="button" value="Add" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>">
+									</div>
+
+									<div class="mfm-removals mfm-validation-response" data-validation-response-for="excluded_file_extensions"><span></span></div>
+
+									<br>
+									<div class="mfm-settings-grid" data-list-items-wrapper-for="excluded_file_extensions">
+										<?php
+										if ( is_array( $mfm_settings['excluded_file_extensions'] ) && ! empty( $mfm_settings['excluded_file_extensions'] ) ) {
+											foreach ( $mfm_settings['excluded_file_extensions'] as $extension => $label ) {
+												echo '<span ><input type="checkbox" name="mfm-settings[excluded_file_extensions][]" id="' . esc_attr( $label ) . '" value="' . esc_attr( $label ) . '" checked=""><label for="' . esc_attr( $label ) . '">' . esc_attr( $label ) . '</label></span>';
+											}
+										}
+										?>
+									</div>
+
+									<div class="mfm-removals" data-marked-for-removal-for="excluded_file_extensions"><span></span> <?php esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
+								</fieldset>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<div id="mfm-wizard-ignore-step-4">
+				<h3><?php esc_html_e( 'Which directories should be excluded from the scan?', 'website-file-changes-monitor' ); ?></h3>
+				<p class="description"><?php esc_html_e( 'Use the settings below to specify the directories that the plugin should exclude from the file scans. When a directory is excluded, the plugin won’t scan any of the files within that directory and won’t be aware of any changes within that directory. This setting is ideal for directories with a large number of files, for example, where images, videos and other digital media is stored.', 'website-file-changes-monitor' ); ?></p>
+
+				<table class="form-table mfm-table">
+					<tbody>
+						<tr>
+							<th><label for="mfm-settings-exclude-dirs"><?php esc_html_e( 'Exclude all files in these directories', 'website-file-changes-monitor' ); ?></label></th>
+							<td>
+							<fieldset>
+									<div class="mfm-files-container">
+										<input class="name" type="text" data-input-for="ignored_directories">
+										<input class="button add" data-list-type="ignored_directories" type="button" value="Add" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>">
+									</div>		
+
+									<div class="mfm-removals mfm-validation-response" data-validation-response-for="ignored_directories"><span></span></div>
+									<br>
+
+									<div class="mfm-files-container" data-list-items-wrapper-for="ignored_directories">
+										<?php
+										if ( is_array( $mfm_settings['ignored_directories'] ) && ! empty( $mfm_settings['ignored_directories'] ) ) {
+											foreach ( $mfm_settings['ignored_directories'] as $extension => $label ) {
+												echo '<span ><input type="checkbox" name="mfm-settings[ignored_directories][]" id="' . esc_attr( $label ) . '" value="' . esc_attr( $label ) . '" checked=""><label for="' . esc_attr( $label ) . '">' . esc_attr( str_replace( ABSPATH, '', $label ) ) . '</label></span><br>';
+											}
+										}
+										?>
+									</div>	
+									
+									<div class="mfm-removals" data-marked-for-removal-for="ignored_directories"><span></span> <?php esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
+								</fieldset>
+							</td>
+						</tr>
+
+					</tbody>
+				</table>
+			</div>
+			<!-- Exclude extensions -->			
+
+			<h3><?php esc_html_e( 'How should the plugin handle files with no extension?', 'website-file-changes-monitor' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'By default the plugin also scans files with no extension. You can disable this feature using the setting below.', 'website-file-changes-monitor' ); ?></p>
 			<table class="form-table">
 				<tr>
 					<th><label for="mfm-scan-files-with-no-extension"><?php esc_html_e( 'Scan files without extension', 'website-file-changes-monitor' ); ?></label></th>
@@ -306,7 +373,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 			</table>	
 
 			<h3><?php esc_html_e( 'What is the biggest file size the plugin should scan?', 'website-file-changes-monitor' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'By default the plugin does not scan files that are bigger than 5MB. Such files are not common, hence typically not a target.', 'website-file-changes-monitor' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Use the setting below to configure the maximum file size the plugin should exclude from the scan. Files exceeding this size will not be scanned. Tip: files containing source code are rarely this large. Large file sizes typically apply to images, videos, PDFs, and other media files.', 'website-file-changes-monitor' ); ?></p>
 			<table class="form-table mfm-table">
 				<tr>
 					<th><label for="mfm-settings-file-size"><?php esc_html_e( 'File size limit', 'website-file-changes-monitor' ); ?></label></th>
@@ -320,14 +387,14 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 
 			<div id="mfm-wizard-purging">
 				<h3><?php esc_html_e( 'How much scan data would like you the plugin to keep?', 'website-file-changes-monitor' ); ?></h3>
-				<p class="description"><?php esc_html_e( 'By default, Melapress File Monitor only keeps the scan results of the last scan. With each new scan, this is overwritten with the results of the new scan. If you want to keep scan results data for more than one scan, specify the number of scan results you would like to keep below. You can also change this from the plugin\'s settings.', 'website-file-changes-monitor' ); ?></p>
+				<p class="description"><?php esc_html_e( 'By default, Melapress File Monitor retains only the scan results from the last scan, which are overwritten with each new scan. If you\'d like to keep data from multiple scans, please specify how many sets of results you wish to retain below.', 'website-file-changes-monitor' ); ?></p>
 				
 				<table class="form-table mfm-table">
 					<tr>
 						<th><label for="mfm-settings-purge-length"><?php esc_html_e( 'Events purging', 'website-file-changes-monitor' ); ?></label></th>
 						<td>
 							<fieldset>
-								<?php esc_html_e( 'Scan events purging: Remove file changes events old than', 'website-file-changes-monitor' ); ?> <input type="number" name="mfm-settings[purge-length]" min="1" max="100" value="<?php echo esc_attr( $mfm_settings['purge-length'] ); ?>" /> <?php esc_html_e( 'scan(s)', 'website-file-changes-monitor' ); ?>
+								<?php esc_html_e( 'Scan events purging: Remove file changes events older than', 'website-file-changes-monitor' ); ?> <input type="number" name="mfm-settings[purge-length]" min="1" max="100" value="<?php echo esc_attr( $mfm_settings['purge-length'] ); ?>" /> <?php esc_html_e( 'scan(s)', 'website-file-changes-monitor' ); ?>
 							</fieldset>
 						</td>
 					</tr>
@@ -338,13 +405,13 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 		<div data-settings-section id="core-preferences">
 			
 			<div id="mfm-wizard-enable-core">
-				<h3><?php esc_html_e( 'Check for modifications to core files?', 'website-file-changes-monitor' ); ?></h3>
+				<h3><?php esc_html_e( 'Should the plugin cross check the WordPress core files?', 'website-file-changes-monitor' ); ?></h3>
 				<p class="description">
-					<?php esc_html_e( 'During a scan our plugin can detect if a core WordPress file has been modified and provide a warning/event. These modifications occur when a file does not match what is expected from your WordPress version and can be useful in detecting unwanted changes.', 'website-file-changes-monitor' ); ?> 
+					<?php esc_html_e( 'During the scan, the plugin cross checks (verifies the integrity) of your WordPress core files by comparing them to the files in the official WordPress repository. If any discrepancies are found, the plugin will notify you of the changes.', 'website-file-changes-monitor' ); ?> 
 				</p>
 				<table class="form-table">
 					<tr>
-						<th><label for="mfm-enable-core-scan"><?php esc_html_e( 'Enable WordPress core files scanning', 'website-file-changes-monitor' ); ?></label></th>
+						<th><label for="mfm-enable-core-scan"><?php esc_html_e( 'Cross check WordPress', 'website-file-changes-monitor' ); ?></label></th>
 						<td>
 							<fieldset>
 								<label class="mfm-toggle">
@@ -358,55 +425,23 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 				</table>	
 			</div>
 
-			<h3><?php esc_html_e( 'Which files are allowed as part of WordPress core (website root directory, wp-admin and wp-includes)?', 'website-file-changes-monitor' ); ?></h3>
-			<p class="description"><?php esc_html_e( 'All non-WordPress core files on a website are saved in the \'/wp-content\' directory. However, you might have non-WordPress core files in the website root or in the core directories (wp-admin and wp-includes). If you do, add them to the below list so they are marked as legit files. Otherwise, the plugin will notify you about them with each scan. Note that by adding them to this list, it does not mean that the plugin won\'t alert you of any subsequent changes that happen to these files and / or in these directories. If you do not want to be alerted of any changes in these files or directory, exclude them from the scan.', 'website-file-changes-monitor' ); ?> <a href="https://melapress.com/support/kb/website-file-changes-monitor-allowed-files-directories-root-core/?utm_source=plugins&utm_medium=link&utm_campaign=mfm" target="_blank"><?php esc_html_e( 'More information', 'website-file-changes-monitor' ); ?></a></p>
+			<h3><?php esc_html_e( 'Which files are allowed in the WordPress core directories (root, wp-admin, wp-includes)?', 'website-file-changes-monitor' ); ?></h3>
+			<p class="description">
+				<?php
+					// translators: path names.
+					printf( esc_html__( 'In a default installation all non-core WordPress files are stored within the %1$1s directory. However, if your website contains custom or third-party files in the root or core directories like %2$2s and %3$3s, you can add them to the list below to mark them as legitimate. Otherwise, the plugin will flag them during each scan.', 'website-file-changes-monitor' ), '<code>/wp-content</code>', '<code>wp-admin</code>', '<code>wp-includes</code>' );
+				?>
+			</p><br>
+			<p class="description"><?php esc_html_e( 'Please note, adding files to this list ensures they won\'t be flagged, but the plugin will still alert you of any modifications. If you don\'t want to receive alerts of changes in these files or directories, consider excluding them from scans entirely.', 'website-file-changes-monitor' ); ?></p>
 
 				<table class="form-table mfm-table">
-				<!-- <th><label for="mfm-settings-allowed-in-core-dirs"><?php esc_html_e( 'Allow all the files in these directories', 'website-file-changes-monitor' ); ?></label></th> -->
-				<!-- <td>
-					<fieldset>
-						<p class="description">
-							<?php esc_html_e( 'Specify the name of the directory and the path to it in relation to the website\'s root. For example, if you want to allow all files in the sub directory dir1/dir2 specify the following:', 'website-file-changes-monitor' ); ?>
-							<br>
-							<?php echo esc_html( trailingslashit( ABSPATH ) ) . 'dir1/dir2'; ?>
-						</p>
-						<br>
-
-						<div class="mfm-files-container">
-							<input class="name" type="text" data-input-for="allowed-in-core-dirs">
-							<input class="button add" data-list-type="allowed-in-core-dirs" data-object-type="dirs" type="button" value="<?php esc_html_e( 'Add', 'website-file-changes-monitor' ); ?>" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>" 
-								data-trigger-popup="<?php esc_html_e( 'When directories are added to this list, the plugin will consider them as part of your website\'s WordPress core. Therefore it will scan the files in them during the normal file integrity scans and will alert you if any are modified or deleted. If you do not want to be alerted of such changes about files in this directory, exclude it from the scan.', 'website-file-changes-monitor' ); ?>"
-								data-trigger-popup-title="<?php esc_html_e( 'Adding an allowed directory', 'website-file-changes-monitor' ); ?>"
-							/>
-						</div>
-						<br>
-
-						<div class="mfm-files-container">
-							<div class="item-list allowed-in-core-list" id="mfm-allowed-in-core-dirs-list" data-list-items-wrapper-for="allowed-in-core-dirs">
-								<?php if ( is_array( $mfm_settings['allowed-in-core-dirs'] ) ) : ?>
-									<?php foreach ( $mfm_settings['allowed-in-core-dirs'] as $dir ) : ?>
-										<span>
-											<input type="checkbox" name="mfm-settings[allowed-in-core-dirs][]" id="allowed-in-core-dirs-<?php echo esc_attr( $dir ); ?>" value="<?php echo esc_attr( $dir ); ?>" checked />
-											<label for="allowed-in-core-dirs-<?php echo esc_attr( $dir ); ?>"><?php echo esc_html( $dir ); ?></label>
-										</span>
-										<br>
-									<?php endforeach; ?>
-								<?php endif; ?>
-							</div>
-						</div>
-
-						<div class="mfm-removals" data-marked-for-removal-for="allowed-in-core-dirs"><span></span> <?php esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
-					</fieldset>
-				</td> -->
-				</tr>
-				<!-- Directories allowed in site root and WP core -->
 				<tr>
 					<th>
 						<label for="mfm-settings-allowed-in-core-filenames"><?php esc_html_e( 'Allow these files', 'website-file-changes-monitor' ); ?></label>
 					</th>
 					<td>
 						<fieldset>
-							<p class="description"><?php esc_html_e( 'Specify the name and extension of the file(s) you want to allow in the website root and core directories. Wildcards are not supported. There is no need to specify the path of the file.', 'website-file-changes-monitor' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Only specify the name and extension of the file(s) you want to allow in the website root and core directories. There is no need to specify the path of the file. Wildcards are not supported.', 'website-file-changes-monitor' ); ?></p>
 							<br>
 
 							<div class="mfm-files-container">
@@ -488,11 +523,45 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 								</label>
 								<br />
 								<br />
-								<input type="button" class="button button-primary" id="mfm-send-test-email" data-nonce="<?php echo esc_attr( wp_create_nonce( 'mfm_test_email_nonce' ) ); ?>" value="<?php esc_attr_e( 'Send a test email', 'website-file-changes-monitor' ); ?>"/>
+								<input type="button" class="button button-primary" id="mfm-send-test-email" data-nonce="<?php echo esc_attr( wp_create_nonce( MFM_PREFIX . 'test_email_nonce' ) ); ?>" value="<?php esc_attr_e( 'Send a test email', 'website-file-changes-monitor' ); ?>"/>
 								<div id="mfm-test-email-response" class="hidden">
 									<?php /* Translators: Contact us hyperlink */ ?>
-									<p><?php echo sprintf( esc_html__( 'Oops! Email sending failed. Please %s for assistance.', 'website-file-changes-monitor' ), '<a href="https://melapress.com/support/?utm_source=plugins&utm_medium=link&utm_campaign=mfm" target="_blank">' . esc_html__( 'contact us', 'website-file-changes-monitor' ) . '</a>' ); ?></p>
+									<p><?php printf( esc_html__( 'Oops! Email sending failed. Please %s for assistance.', 'website-file-changes-monitor' ), '<a href="https://melapress.com/support/?utm_source=plugin&utm_medium=link&utm_campaign=mfm" target="_blank">' . esc_html__( 'contact us', 'website-file-changes-monitor' ) . '</a>' ); ?></p>
 								</div>
+							</fieldset>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<div id="mfm-wizard-notification">
+				<h3><?php esc_html_e( 'Which email address should the plugin use as a from address?', 'website-file-changes-monitor' ); ?></h3>
+				<p class="description"><?php esc_html_e( 'By default when the plugin sends an email notification it uses the email address specified in this website’s general settings. Though you can change the email address and display name from this section.', 'website-file-changes-monitor' ); ?></p>
+				<table class="form-table mfm-table">
+					<tr>
+						<th><label for="mfm-notification-email-address"><?php esc_html_e( 'From Email & Name', 'website-file-changes-monitor' ); ?></label></th>
+						<td>
+							<fieldset>
+								<?php $use_email = $mfm_settings['use_custom_from_email']; ?>
+								<label for="default_email">
+									<input type="radio" name="mfm-settings[use_custom_from_email]" id="default_email" value="default_email" <?php checked( $use_email, 'default_email' ); ?> />
+									<?php esc_html_e( 'Use the email address from the WordPress general settings', 'website-file-changes-monitor' ); ?>
+								</label>
+								<br>
+								<label for="custom_email">
+									<input type="radio" name="mfm-settings[use_custom_from_email]" id="custom_email" value="custom_email" <?php checked( $use_email, 'custom_email' ); ?> />
+									<?php esc_html_e( 'Use another email address', 'website-file-changes-monitor' ); ?>
+								</label>
+								<br>
+								<label for="from-email">
+									<?php esc_html_e( 'Email Address', 'website-file-changes-monitor' ); ?>
+									<input type="email" id="from-email" name="mfm-settings[from-email]" value="<?php echo esc_attr( $mfm_settings['from-email'] ); ?>" />
+								</label>
+								<br>
+								<label for="from-display-name">
+									<?php esc_html_e( 'Display Name', 'website-file-changes-monitor' ); ?>&nbsp;
+									<input type="text" id="from-display-name" name="mfm-settings[from-display-name]" value="<?php echo esc_attr( $mfm_settings['from-display-name'] ); ?>" />
+								</label>
 							</fieldset>
 						</td>
 					</tr>
@@ -570,7 +639,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 							<fieldset>
 								<input type="button" class="button button-primary" id="mfm-cancel-in-progress" value="<?php esc_attr_e( 'Cancel scan', 'website-file-changes-monitor' ); ?>"/>
 								
-								<div id="mfm-cancel-proceed"><?php esc_html_e( 'Are you sure?', 'website-file-changes-monitor' ); ?> <a data-nonce="<?php echo esc_attr( wp_create_nonce( 'mfm_cancel_scan_nonce' ) ); ?>" href="#proceed"><?php esc_html_e( 'Proceed', 'website-file-changes-monitor' ); ?></a> <a href="#cancel"><?php esc_html_e( 'Cancel', 'website-file-changes-monitor' ); ?></a> </div>
+								<div id="mfm-cancel-proceed"><?php esc_html_e( 'Are you sure?', 'website-file-changes-monitor' ); ?> <a data-nonce="<?php echo esc_attr( wp_create_nonce( MFM_PREFIX . 'cancel_scan_nonce' ) ); ?>" href="#proceed"><?php esc_html_e( 'Proceed', 'website-file-changes-monitor' ); ?></a> <a href="#cancel"><?php esc_html_e( 'Cancel', 'website-file-changes-monitor' ); ?></a> </div>
 								<div id="mfm-cancel-response"></div>
 							</fieldset>
 						</td>
@@ -620,7 +689,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 						<fieldset>
 							<input type="button" class="button button-primary" id="mfm-perform-purge" value="<?php esc_attr_e( 'Purge plugin data', 'website-file-changes-monitor' ); ?>"/>
 							
-							<div id="mfm-purge-proceed"><?php esc_html_e( 'Are you sure? This will remove ALL data, settings and events.', 'website-file-changes-monitor' ); ?> <a data-nonce="<?php echo esc_attr( wp_create_nonce( 'mfm_purge_data_nonce' ) ); ?>" href="#proceed"><?php esc_html_e( 'Proceed', 'website-file-changes-monitor' ); ?></a> <a href="#cancel"><?php esc_html_e( 'Cancel', 'website-file-changes-monitor' ); ?></a> </div>
+							<div id="mfm-purge-proceed"><?php esc_html_e( 'Are you sure? This will remove ALL data, settings and events.', 'website-file-changes-monitor' ); ?> <a data-nonce="<?php echo esc_attr( wp_create_nonce( MFM_PREFIX . 'purge_data_nonce' ) ); ?>" href="#proceed"><?php esc_html_e( 'Proceed', 'website-file-changes-monitor' ); ?></a> <a href="#cancel"><?php esc_html_e( 'Cancel', 'website-file-changes-monitor' ); ?></a> </div>
 							<div id="mfm-purge-response"></div>
 						</fieldset>
 					</td>
@@ -634,14 +703,14 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 						<fieldset>
 							<select id="selected-setting">
 								<?php
-								foreach ( array_keys( $mfm_settings ) as $setting ) {
-									echo '<option value="' . esc_attr( $setting ) . '">' . esc_attr( ucwords( preg_replace( '/[\-_]/', ' ', $setting ) ) ) . '</option>';
+								foreach ( $restorable_settings as $setting => $label ) {
+									echo '<option value="' . esc_attr( $setting ) . '">' . esc_attr( $label ) . '</option>';
 								}
 								?>
 							</select>
 							<input type="button" class="button button-primary" id="mfm-perform-setting-reset" value="<?php esc_attr_e( 'Restore setting to default', 'website-file-changes-monitor' ); ?>"/>
 							
-							<div id="mfm-reset-proceed"><?php esc_html_e( 'Are you sure? This reset this setting to its default value.', 'website-file-changes-monitor' ); ?> <a data-nonce="<?php echo esc_attr( wp_create_nonce( 'mfm_reset_setting_nonce' ) ); ?>" href="#proceed"><?php esc_html_e( 'Proceed', 'website-file-changes-monitor' ); ?></a> <a href="#cancel"><?php esc_html_e( 'Cancel', 'website-file-changes-monitor' ); ?></a> </div>
+							<div id="mfm-reset-proceed"><?php esc_html_e( 'Are you sure? This reset this setting to its default value.', 'website-file-changes-monitor' ); ?> <a data-nonce="<?php echo esc_attr( wp_create_nonce( MFM_PREFIX . 'reset_setting_nonce' ) ); ?>" href="#proceed"><?php esc_html_e( 'Proceed', 'website-file-changes-monitor' ); ?></a> <a href="#cancel"><?php esc_html_e( 'Cancel', 'website-file-changes-monitor' ); ?></a> </div>
 							<div id="mfm-reset-response"></div>
 						</fieldset>
 					</td>

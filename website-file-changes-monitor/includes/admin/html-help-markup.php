@@ -2,11 +2,15 @@
 /**
  * Help tab.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
 
+declare(strict_types=1);
+
+// Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly.
+	exit;
 }
 
 ?>
@@ -27,8 +31,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<p class="description"><?php esc_html_e( 'Getting alerted of file changes on your WordPress website is as easy as 1 2 3 with Melapress File Monitor plugin. This can be easily done through the install wizard or the plugin settings. If you are stuck, no problem! Below are a few links of guides to help you get started:', 'website-file-changes-monitor' ); ?></p>
 		<br>
 
-		<a href="https://melapress.com/support/kb/website-file-changes-monitor-getting-started-plugin/?utm_source=plugins&utm_medium=link&utm_campaign=mfm" target="_blank"><?php esc_html_e( 'Getting started with Melapress File Monitor', 'website-file-changes-monitor' ); ?></a><br>
-		<a href="https://melapress.com/support/kb/website-file-changes-monitor-change-file-changes-notification-email-address/?utm_source=plugins&utm_medium=link&utm_campaign=mfm" target="_blank"><?php esc_html_e( 'How to change the email address where notifications are sent', 'website-file-changes-monitor' ); ?></a>
+		<a href="https://melapress.com/support/kb/website-file-changes-monitor-getting-started-plugin/?utm_source=plugin&utm_medium=link&utm_campaign=mfm" target="_blank"><?php esc_html_e( 'Getting started with Melapress File Monitor', 'website-file-changes-monitor' ); ?></a><br>
+		<a href="https://melapress.com/support/kb/website-file-changes-monitor-change-file-changes-notification-email-address/?utm_source=plugin&utm_medium=link&utm_campaign=mfm" target="_blank"><?php esc_html_e( 'How to change the email address where notifications are sent', 'website-file-changes-monitor' ); ?></a>
 		<br>
 		<br>
 		
@@ -40,18 +44,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 			<!-- Plugin documentation -->
 	<div class="title">
-		<h2 style="padding-left: 0;"><?php esc_html_e( 'Plugin Documentation',  'website-file-changes-monitor' ); ?></h2>
+		<h2 style="padding-left: 0;"><?php esc_html_e( 'Plugin Documentation', 'website-file-changes-monitor' ); ?></h2>
 	</div>
-	<p><?php esc_html_e( 'For more technical information about the Melapress File Monitor plugin please visit the plugin’s knowledge base.',  'website-file-changes-monitor' ); ?></p>
+	<p><?php esc_html_e( 'For more technical information about the Melapress File Monitor plugin please visit the plugin’s knowledge base.', 'website-file-changes-monitor' ); ?></p>
 	<div class="btn">
-		<a href="<?php echo esc_url( 'https://melapress.com/support/kb/?utm_source=plugins&utm_medium=link&utm_campaign=mfm' ); ?>" class="button" target="_blank"><?php esc_html_e( 'Knowledge Base',  'website-file-changes-monitor' ); ?></a>
+		<a href="<?php echo esc_url( 'https://melapress.com/support/kb/?utm_source=plugin&utm_medium=link&utm_campaign=mfm' ); ?>" class="button" target="_blank"><?php esc_html_e( 'Knowledge Base', 'website-file-changes-monitor' ); ?></a>
 
 		<div class="title">
-		<h2 style="padding-left: 0;"><?php esc_html_e( 'Plugin Support',  'website-file-changes-monitor' ); ?></h2>
+		<h2 style="padding-left: 0;"><?php esc_html_e( 'Plugin Support', 'website-file-changes-monitor' ); ?></h2>
 	</div>
-	<p><?php esc_html_e( 'You can post your question on our support forum or send us an email for 1 to 1 support. Email support is provided to both free and premium plugin users.',  'website-file-changes-monitor' ); ?></p>
+	<p><?php esc_html_e( 'You can post your question on our support forum or send us an email for 1 to 1 support. Email support is provided to both free and premium plugin users.', 'website-file-changes-monitor' ); ?></p>
 	<div class="btn">
-		<a href="<?php echo esc_url( 'https://wordpress.org/support/plugin/website-file-changes-monitor' ); ?>" class="button" target="_blank"><?php esc_html_e( 'Free support forum',  'website-file-changes-monitor' ); ?></a>
+		<a href="<?php echo esc_url( 'https://wordpress.org/support/plugin/website-file-changes-monitor' ); ?>" class="button" target="_blank"><?php esc_html_e( 'Free support forum', 'website-file-changes-monitor' ); ?></a>
 		<a href="<?php echo esc_url( 'https://melapress.com/support/submit-ticket/?utm_source=plugin&utm_medium=referral&utm_campaign=MFM&utm_content=free+support+email' ); ?>" class="button" target="_blank"><?php esc_html_e( 'Free email support', 'advanced-nocaptcha-recaptcha' ); ?></a>
 	</div>
 	<!-- End -->
@@ -83,25 +87,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 					'img'  => trailingslashit( MFM_BASE_URL ) . 'assets/img/wp-security-audit-log-img.jpg',
 					'desc' => __( 'Keep a log of users and under the hood site activity.', 'website-file-changes-monitor' ),
 					'alt'  => 'WP Activity Log', // this is a name and intentionally not translated.
-					'link' => 'https://wpactivitylog.com/?utm_source=plugins&utm_medium=link&utm_campaign=mfm',
+					'link' => 'https://wpactivitylog.com/?utm_source=plugin&utm_medium=link&utm_campaign=mfm',
 				),
 				array(
 					'img'  => trailingslashit( MFM_BASE_URL ) . 'assets/img/wp-2fa.jpg',
 					'desc' => __( 'Add an extra layer of security to your login pages with 2FA & require your users to use it.', 'website-file-changes-monitor' ),
 					'alt'  => 'WP 2FA', // this is a name and intentionally not translated.
-					'link' => 'https://melapress.com/wordpress-2fa/?utm_source=plugins&utm_medium=link&utm_campaign=mfm',
+					'link' => 'https://melapress.com/wordpress-2fa/?utm_source=plugin&utm_medium=link&utm_campaign=mfm',
 				),
 				array(
 					'img'  => trailingslashit( MFM_BASE_URL ) . 'assets/img/c4wp.jpg',
 					'desc' => __( 'Protect website forms & login pages from spambots & automated attacks.', 'website-file-changes-monitor' ),
 					'alt'  => 'CAPTCHA 4WP', // this is a name and intentionally not translated.
-					'link' => 'https://melapress.com/wordpress-captcha/?utm_source=plugins&utm_medium=link&utm_campaign=mfm',
+					'link' => 'https://melapress.com/wordpress-captcha/?utm_source=plugin&utm_medium=link&utm_campaign=mfm',
 				),
 				array(
 					'img'  => trailingslashit( MFM_BASE_URL ) . 'assets/img/password-policy-manager.jpeg',
 					'desc' => __( 'Boost WordPress security with login & password policies.', 'website-file-changes-monitor' ),
 					'alt'  => 'WPassword', // this is a name and intentionally not translated.
-					'link' => 'https://melapress.com/wordpress-login-security/?utm_source=plugins&utm_medium=link&utm_campaign=mfm',
+					'link' => 'https://melapress.com/wordpress-login-security/?utm_source=plugin&utm_medium=link&utm_campaign=mfm',
 				),
 			);
 
@@ -113,7 +117,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 		<div class="mfm-about-hero">
 			<div class="mfm-about-logo"><a href="https://melapress.com/?utm_source=plugin&utm_medium=referral&utm_campaign=MFM&utm_content=help+page" target="_blank"><img src="<?php echo esc_url( MFM_BASE_URL . 'assets/img/melapress-logo-horiz.svg' ); ?>" alt="<?php esc_attr_e( 'Melapress', 'website-file-changes-monitor' ); ?>"></a></div>
-			<p><?php /* Translators: 1. WP plugins hyperlink 2. Contact form hyperlink */ echo sprintf( esc_html__( 'The WP File Changes Monitor plugin is developed by Melapress, developers of %1$s. If you would like to get in touch with us, please use our %2$s.', 'website-file-changes-monitor' ), '<a href="https://melapress.com/?utm_source=plugins&utm_medium=link&utm_campaign=mfm" target="_blank">' . esc_html__( 'high-quality niche WordPress security and admin plugins', 'website-file-changes-monitor' ) . '</a>', '<a href="https://melapress.com/contact/?utm_source=plugins&utm_medium=link&utm_campaign=mfm" target="_blank">' . esc_html__( 'contact form', 'website-file-changes-monitor' ) . '</a>' ); ?></p>
+			<p><?php /* Translators: 1. WP plugins hyperlink 2. Contact form hyperlink */ printf( esc_html__( 'The WP File Changes Monitor plugin is developed by Melapress, developers of %1$s. If you would like to get in touch with us, please use our %2$s.', 'website-file-changes-monitor' ), '<a href="https://melapress.com/?utm_source=plugin&utm_medium=link&utm_campaign=mfm" target="_blank">' . esc_html__( 'high-quality niche WordPress security and admin plugins', 'website-file-changes-monitor' ) . '</a>', '<a href="https://melapress.com/contact/?utm_source=plugin&utm_medium=link&utm_campaign=mfm" target="_blank">' . esc_html__( 'contact form', 'website-file-changes-monitor' ) . '</a>' ); ?></p>
 			</div>
 		<br>
 		
@@ -140,12 +144,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<p>
 			<textarea id="mfm-system-info-textarea" readonly="readonly" onclick="this.focus(); this.select()"><?php echo esc_html( \MFM\Helpers\Settings_Helper::get_system_info() ); ?></textarea>			
 		</p>
-		<a href="#" class="button button-primary" id="mfm-download-sysinfo"><?php echo __( 'Download System Info File', 'website-file-changes-monitor' ); ?></a>
+		<a href="#" class="button button-primary" id="mfm-download-sysinfo"><?php echo esc_html__( 'Download System Info File', 'website-file-changes-monitor' ); ?></a>
 		<?php if ( 'yes' === \MFM\Helpers\Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) { ?>
-		<?php
-		$upload_dir = wp_upload_dir();
-		?>
-		<a href="<?php echo esc_url( trailingslashit( $upload_dir['baseurl'] ) . trailingslashit(  MFM_LOGS_DIR ) . 'mfm-debug.log' ); ?>" class="button button-primary" id="mfm-download-logs" target="_blank"><?php echo __( 'Download MFM Debug logs', 'website-file-changes-monitor' ); ?></a>
+			<?php
+			$upload_dir = wp_upload_dir();
+			?>
+		<a href="<?php echo esc_url( trailingslashit( $upload_dir['baseurl'] ) . trailingslashit( MFM_LOGS_DIR ) . 'mfm-debug.log' ); ?>" class="button button-primary" id="mfm-download-logs" target="_blank"><?php echo esc_html__( 'Download MFM Debug logs', 'website-file-changes-monitor' ); ?></a>
 		<?php } ?>
 		<script type="text/javascript">
 		/**

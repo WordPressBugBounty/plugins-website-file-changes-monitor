@@ -2,16 +2,26 @@
 /**
  * Handles gathering of file data..
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
+
+declare(strict_types=1);
 
 namespace MFM\Runners;
 
-use \MFM\Helpers\Directory_And_File_Helpers;  // phpcs:ignore
-use \MFM\DB_Handler;  // phpcs:ignore
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use MFM\Helpers\Directory_And_File_Helpers;
+use MFM\DB_Handler;
 
 /**
  * Main file discovery.
+ *
+ * @since 2.0.0
  */
 class File_Runner extends \WP_Background_Process {
 
@@ -19,6 +29,8 @@ class File_Runner extends \WP_Background_Process {
 	 * Runner prefix.
 	 *
 	 * @var string
+	 *
+	 * @since 2.0.0
 	 */
 	protected $prefix = 'mfm';
 
@@ -26,6 +38,8 @@ class File_Runner extends \WP_Background_Process {
 	 * Runner action name.
 	 *
 	 * @var string
+	 *
+	 * @since 2.0.0
 	 */
 	protected $action = 'file_runner';
 
@@ -33,7 +47,10 @@ class File_Runner extends \WP_Background_Process {
 	 * Undocumented function
 	 *
 	 * @param array $item - Incoming.
+	 *
 	 * @return bool
+	 *
+	 * @since 2.0.0
 	 */
 	protected function task( $item ) {
 		$path = $item['path'];
@@ -61,9 +78,35 @@ class File_Runner extends \WP_Background_Process {
 	 * Unlock.
 	 *
 	 * @return $this
+	 *
+	 * @since 2.0.0
 	 */
 	protected function unlock_process() {
 		delete_site_transient( $this->identifier . '_process_lock' );
 		return $this;
+	}
+
+	/**
+	 * Should the process exit with wp_die?
+	 *
+	 * @param mixed $should_return What to return if filter says don't die, default is null.
+	 *
+	 * @return void|mixed
+	 *
+	 * @since 2.0.0
+	 */
+	protected function maybe_wp_die( $should_return = null ) {
+		/**
+		 * Should wp_die be used?
+		 *
+		 * @return bool
+		 *
+		 * @since 2.0.0
+		 */
+		if ( apply_filters( $this->identifier . '_wp_die', true ) ) {
+			wp_die();
+		}
+
+		return $should_return;
 	}
 }

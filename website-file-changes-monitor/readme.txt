@@ -3,10 +3,10 @@ Contributors: Melapress
 Plugin URI: https://melapress.com/wordpress-file-monitor/
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl.html
-Tags: file monitor, file integrity scanner, file security, file scanner, file changes
+Tags: security, file monitor, file integrity scanner, file security, file changes
 Requires at least: 5.0
 Tested up to: 6.6.2
-Stable tag: 2.0.2
+Stable tag: 2.1.0
 Requires PHP: 8.0
 
 Get alerted via email of file changes on your WordPress sites. No false positives!
@@ -15,7 +15,7 @@ Get alerted via email of file changes on your WordPress sites. No false positive
 
 ### Get alerted via email of file changes on your WordPress sites to boost reliability & security 
 
-There are many benefits you can take advantage of when you install this hassle-free [WordPress file integrity monitoring plugin](https://melapress.com/wordpress-file-monitor/) on your website, such as:
+There are many benefits you can take advantage of when you install this hassle-free [WordPress file integrity monitoring plugin](https://melapress.com/wordpress-file-monitor/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm) on your website, such as:
 *	Keep track of the last code changes on your website for easier troubleshooting
 *	Identify leftover & backup files that can lead to sensitive business & technical data exposure
 *	Pinpoint malware injections early to avoid irreparable site damage
@@ -23,11 +23,11 @@ There are many benefits you can take advantage of when you install this hassle-f
 
 Keeping track of file changes on your WordPress website is a maintanence and security best practise every site owner should follow. This can only be done by installing a plugin. Use Melapress File Monitor to automatically scan your website for file changes.
 
-The plugin alerts you of file changes via email. It helps you easily spot leftover and [backup files that could leave your website exposed](https://melapress.com/exposed-backup-unreferenced-files-wordpress/), and identify injected malware and code changes, so you can remove the files and clean malware infections at the earliest possible.
+The plugin alerts you of file changes via email. It helps you easily spot leftover and [backup files that could leave your website exposed](https://melapress.com/exposed-backup-unreferenced-files-wordpress/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm), and identify injected malware and code changes, so you can remove the files and clean malware infections at the earliest possible.
 
 #### Maintained & Supported by Melapress
 
-Melapress builds high-quality WordPress security & site management plugins like [WP Activity Log](https://melapress.com/wordpress-activity-log/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm), the #1 WordPress activity log plugin. Browse our list of [WordPress plugins](https://melapress.com/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm) that help you better manage and improve the security of your WordPress website.
+Melapress builds high-quality WordPress security & site management plugins like [WP Activity Log](https://melapress.com/wordpress-activity-log/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm), the #1 WordPress activity log plugin. Browse our list of [WordPress plugins](https://melapress.com/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm) that help you better manage and improve the security of your WordPress website.
 
 ### Why Do You Need a website file integrity monitoring plugin?
 
@@ -79,7 +79,7 @@ The Melapress File Monitor plugin can scan any type of file and it is not limite
 
 It also compares the WordPress core files of your website to the list of files on the official WordPress repository, so it will also alert you if a WordPress core file has been tampered with, or changed. 
 
-To learn more on both the file integrity monitoring technologies the plugin uses refer to [how the plugin detects file changes on WordPress](https://melapress.com/support/kb/website-file-changes-monitor-how-plugin-detects-file-changes/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm)
+To learn more on both the file integrity monitoring technologies the plugin uses refer to [how the plugin detects file changes on WordPress](https://melapress.com/support/kb/website-file-changes-monitor-how-plugin-detects-file-changes/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm)
 
 #### WordPress Multisite Networks Support
 
@@ -98,9 +98,9 @@ The Melapress File Monitor plugin can also detect file changes on WordPress mult
 Support for the WordPress Files Monitor plugin is available for free via:
 
 * [forums](https://wordpress.org/support/plugin/website-file-changes-monitor/)
-* [email](https://melapress.com/support/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm)
+* [email](https://melapress.com/support/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm)
 
-For any other queries, feedback, or if you simply want to get in touch with us please use our [contact form](https://melapress.com/contact/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm).
+For any other queries, feedback, or if you simply want to get in touch with us please use our [contact form](https://melapress.com/contact/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm).
 
 ### As Featured On:
 
@@ -109,15 +109,15 @@ For any other queries, feedback, or if you simply want to get in touch with us p
 * [MainWP](https://mainwp.com/using-the-website-file-changes-monitor-plugin-for-tracking-file-changes-on-your-child-site/)
 
 ### Further Reading & Information
-The Melapress File Monitor plugin is developed by [Melapress](https://melapress.com/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm), developers of a number of WordPress security and admin plugins, including [WP Activity Log](https://melapress.com/wordpress-activity-log/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm), the most comprehensive WordPress activity log plugin, and [Melapress Login Security](https://melapress.com/wordpress-login-security/&utm_source=plugins&utm_medium=link&utm_campaign=wfcm), a login security and password policies plugin.
+The Melapress File Monitor plugin is developed by [Melapress](https://melapress.com/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm), developers of a number of WordPress security and admin plugins, including [WP Activity Log](https://melapress.com/wordpress-activity-log/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm), the most comprehensive WordPress activity log plugin, and [Melapress Login Security](https://melapress.com/wordpress-login-security/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm), a login security and password policies plugin.
 
-* We share our thoughts and publish how to's and guides on how to keep your website secure and manage it better on the [Melapress Blog](https://melapress.com/blog/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm)
-* Learn more on [file integrity monitoring for WordPress sites](https://melapress.com/wordpress-file-integrity-scanning-site/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm)
-* Refer to the [definitive WordPress security guide](https://melapress.com/wordpress-security/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm) for a practical guide to secure your WordPress website.
-* Check out all the [Melapress WordPress plugins](https://melapress.com/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm).
+* We share our thoughts and publish how to's and guides on how to keep your website secure and manage it better on the [Melapress Blog](https://melapress.com/blog/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm)
+* Learn more on [file integrity monitoring for WordPress sites](https://melapress.com/wordpress-file-integrity-scanning-site/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm)
+* Refer to the [definitive WordPress security guide](https://melapress.com/wordpress-security/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm) for a practical guide to secure your WordPress website.
+* Check out all the [Melapress WordPress plugins](https://melapress.com/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm).
 
 ### Translate the plugin in your own language
-If you want to help us translate this plugin in your own language please [contact us](https://melapress.com/contact/?&utm_source=plugins&utm_medium=link&utm_campaign=wfcm). We will credit all translators.
+If you want to help us translate this plugin in your own language please [contact us](https://melapress.com/contact/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm). We will credit all translators.
 
 == Installation ==
 
@@ -142,10 +142,10 @@ No, the plugin does not send any data to us whatsoever. The only data we recieve
 We update the plugin fairly regularly to ensure the plugin continues to run in tip-top shape while adding new features from time to time.
 
 = Support and Documentation =
-Please refer to our [support pages](https://melapress.com/support/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mls) for all the technical and product documentation.
+Please refer to our [support pages](https://melapress.com/support/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm) for all the technical and product documentation.
 
 = How can I report security bugs? =
-Please refer to our [Melapress plugins security program](https://melapress.com/plugins-security-program/).
+You can report security bugs through the Patchstack Vulnerability Disclosure Program. Please use this [form](https://patchstack.com/database/vdp/website-file-changes-monitor). For more details please refer to our [Melapress plugins security program](https://melapress.com/plugins-security-program/).
 
 == Screenshots ==
 
@@ -161,20 +161,27 @@ Please refer to our [Melapress plugins security program](https://melapress.com/p
 
 == Changelog ==
 
-= 2.0.2 (2024-05-15) =
+= 2.1.0 (2024-10-08) =
 
-* **Improvements**
-	* Added an option in the first-time plugin configuration wizard for administrators to choose whether or not to receive email notifications with scan reports.
-	* Added a close button in the setup wizard for a more streamlined user experience.
-	* Optimized some JavaScript timings within the plugin for improved overall speed and efficiency.
-	* Users now have the option to cancel the current scan in progress from the plugin's settings.
-	* Enhanced the email deliverability of the plugin by changing the default "from" address  to match the website's domain.
-	* Updated the integration with the WP Activity Log plugin - now scan start / stop, file changes are reported in the activity log.
-	* Minor text updates and improvements across plugin's wizards and pages.
+ * **New features**
+	 * The plugin has a new setting so admins can change the default "from" email address the plugin uses when sending email notifications.
+	 * A new setting to completely exclude files / directories from scan.
 
-* **Bug fixes**
-	* Resolved the issue with folder exclusion by path; the plugin will no longer report changes from excluded folder paths.
-	* Removed the redundant "month day" option from the weekly scan settings and left only the relevant "week day" as option.
-	* Users with no admin role will no longer be able to see file change notices.
-	* Corrected the domain text inside the plugin to match the plugin's slug label.
-	* Fixed the occasional issue where file changes listings were not showing up in email notifications.
+ * **Plugin improvements**
+	 * Plugin now can either ignore a file during a scan or exclude; ignore - file changes won't be reported but the plugin is "aware" of the file, and exclude is exclude completely.
+	 * All exclude settings apply to the WordPress core files as well.
+	 * The restore default settings setting has been updated allowing users to restore the default of specific individual settings.
+	 * Reviewed and updated all the plugin code to meet the WordPress Coding Standards and applied generic reliability improvements.
+	 * Improved the performance of the plugin - processing of files during the scan is now much faster.
+	 * Improved the help text / settings text of almost all settings.
+	 * Standardized the UTM parameters used in the plugin's links.
+	 * Improved the install wizard - added more slides to give the user more granular options / settings.
+	 * Added several checks in the wizard which could lead to issues. For example added a check to require an email address if user chooses not to use the default one.
+	 * Improved the sanitization of certain parameters in the plugin, for improved security.
+
+ * **Bug fixes**
+	 * Fixed a few edge cases with the scan scheduler selectors. For example, switching AM to PM and changing the default hour only saves the hour change.
+	 * Fixed a number of issues which are specific to some setups in which the same file changes keep reappearing with each scan.
+	 * Fixed a possible RFI issue in the plugin's Help & About Us page.
+	 * Fixed a fatal error generated when a user disables all the notifications and tries to save the settings.
+	 * Fixed a number of PHP warnings / better support for different PHP versions.

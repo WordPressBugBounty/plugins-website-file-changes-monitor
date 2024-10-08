@@ -2,10 +2,8 @@
 /**
  * Custom Alerts for My custom sensor.
  *
- * @since   latest
- *
- * @package wsal
- * @subpackage wsal-my-custom-alerts
+ * @package MFM
+ * @since 2.0.0
  */
 
 declare(strict_types=1);
@@ -19,9 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( ! class_exists( '\WSAL\Custom_Alerts\MFM_Alerts' ) ) {
 	/**
-	 * Custom sensor for Yoast plugin.
+	 * Custom alerts array for WSAL plugin.
 	 *
-	 * @since latest
+	 * @since 2.0.0
 	 */
 	class MFM_Alerts {
 
@@ -30,7 +28,7 @@ if ( ! class_exists( '\WSAL\Custom_Alerts\MFM_Alerts' ) ) {
 		 *
 		 * @return array
 		 *
-		 * @since latest
+		 * @since 2.0.0
 		 */
 		public static function get_custom_alerts(): array {
 			return array(
@@ -54,9 +52,7 @@ if ( ! class_exists( '\WSAL\Custom_Alerts\MFM_Alerts' ) ) {
 							WSAL_HIGH,
 							esc_html__( 'Melapress File Monitor core file change detected', 'website-file-changes-monitor' ),
 							__( 'Melapress File Monitor detected a change within a WordPress core file', 'website-file-changes-monitor' ),
-							array(
-								//esc_html__( 'Change type(s)', 'website-file-changes-monitor' ) => '%event_type%',
-							),
+							array(),
 							wsaldefaults_build_links( array( 'RevisionLink' ) ),
 							'file',
 							'modified',
@@ -79,11 +75,9 @@ if ( ! class_exists( '\WSAL\Custom_Alerts\MFM_Alerts' ) ) {
 							6033,
 							WSAL_HIGH,
 							esc_html__( 'Melapress File Monitor scan started / finished', 'website-file-changes-monitor' ),
-							 /* Translators: %EventType% - Type variable */
+							/* Translators: %EventType% - Type variable */
 							__( 'Melapress File Monitor scan %EventType%.', 'website-file-changes-monitor' ),
-							array(
-								//esc_html__( 'Change type(s)', 'website-file-changes-monitor' ) => '%event_type%',
-							),
+							array(),
 							'',
 							'system',
 							'started',

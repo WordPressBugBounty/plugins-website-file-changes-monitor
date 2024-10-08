@@ -2,16 +2,28 @@
 /**
  * Handles checking and reporting of file changes.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
+
+declare(strict_types=1);
 
 namespace MFM\Runners;
 
-use \MFM\Helpers\Directory_And_File_Helpers; // phpcs:ignore
-use \MFM\DB_Handler; // phpcs:ignore
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use MFM\Helpers\Directory_And_File_Helpers;
+use MFM\DB_Handler;
+use MFM\Plugins_And_Themes_Monitor;
+use MFM\Helpers\Settings_Helper;
 
 /**
  * Main comparison runner.
+ *
+ * @since 2.0.0
  */
 class File_Comparison_Runner extends \WP_Background_Process {
 
@@ -19,6 +31,8 @@ class File_Comparison_Runner extends \WP_Background_Process {
 	 * Runner prefix.
 	 *
 	 * @var string
+	 *
+	 * @since 2.0.0
 	 */
 	protected $prefix = 'mfm';
 
@@ -26,6 +40,8 @@ class File_Comparison_Runner extends \WP_Background_Process {
 	 * Runner action name.
 	 *
 	 * @var string
+	 *
+	 * @since 2.0.0
 	 */
 	protected $action = 'file_comparison_runner';
 
@@ -33,7 +49,10 @@ class File_Comparison_Runner extends \WP_Background_Process {
 	 * Undocumented function
 	 *
 	 * @param array $item - Incoming.
+	 *
 	 * @return bool
+	 *
+	 * @since 2.0.0
 	 */
 	protected function task( $item ) {
 		$changes = DB_Handler::compare_file_changes( $item['path'], $item['data_hash'], $item['file_paths'], $item['file_hashes'] );
@@ -43,8 +62,8 @@ class File_Comparison_Runner extends \WP_Background_Process {
 			$is_active_plugin = false;
 			$is_update        = false;
 
-			$known_plugins_and_themes = get_site_option( MFM_PREFIX . 'plugins_and_themes_history' );
-			$current_id               = get_site_option( MFM_PREFIX . 'active_scan_id' );
+			$known_plugins_and_themes = Settings_Helper::get_site_option_cached( MFM_PREFIX . 'plugins_and_themes_history' );
+			$current_id               = Settings_Helper::get_site_option_cached( MFM_PREFIX . 'active_scan_id' );
 
 			foreach ( $known_plugins_and_themes as $known ) {
 				if ( str_contains( $item['path'], $known ) || $item['path'] === $known ) {
@@ -54,16 +73,11 @@ class File_Comparison_Runner extends \WP_Background_Process {
 			}
 
 			if ( $is_known ) {
-				$plugin_list = Directory_And_File_Helpers::create_plugin_keys();
-				foreach ( $plugin_list as $plugin ) {
-					if ( str_contains( $item['path'], $plugin ) ) {
-						$is_active_plugin = true;
-					}
-				}
+				$is_active_plugin = Plugins_And_Themes_Monitor::is_currently_active_plugin( $item['path'] );
 			}
 
 			if ( $is_active_plugin ) {
-				$updates = get_site_option( MFM_PREFIX . 'plugins_and_themes_recent_updates', array() );
+				$updates = Settings_Helper::get_site_option_cached( MFM_PREFIX . 'plugins_and_themes_recent_updates', array() );
 				foreach ( $updates as $key => $updated ) {
 					if ( str_contains( $item['path'], $updated ) ) {
 						$is_update = true;
@@ -71,7 +85,8 @@ class File_Comparison_Runner extends \WP_Background_Process {
 					}
 				}
 				if ( $is_update ) {
-					$update_opt = update_site_option( MFM_PREFIX . 'plugins_and_themes_recent_updates', $updates );
+					update_site_option( MFM_PREFIX . 'plugins_and_themes_recent_updates', $updates );
+					wp_cache_delete( MFM_PREFIX . 'plugins_and_themes_recent_updates' );
 				}
 			}
 
@@ -83,7 +98,7 @@ class File_Comparison_Runner extends \WP_Background_Process {
 				array_push( $context_of_changes, 'renamed' );
 				foreach ( $changes['renamed'] as $renamed ) {
 					$changes['modified'][] = $renamed;
-				}				 
+				}
 				unset( $changes['renamed'] );
 			}
 			if ( isset( $changes['added'] ) ) {
@@ -95,9 +110,9 @@ class File_Comparison_Runner extends \WP_Background_Process {
 
 			if ( ! empty( $changes ) ) {
 				$data = array(
-					'path'        => $item['path'],
+					'path'        => trailingslashit( $item['path'] ),
 					'event_type'  => ( ! $is_update ) ? strtolower( Directory_And_File_Helpers::determine_directory_context( $item['path'] ) ) . '-file-' . implode( ',', $context_of_changes ) : strtolower( Directory_And_File_Helpers::determine_directory_context( $item['path'] ) ) . '-updated',
-					'time'        => current_time( 'timestamp' ), // phpcs:ignore
+					'time'        => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 					'is_read'     => 'no',
 					'data'        => maybe_serialize( $changes ),
 					'scan_run_id' => $current_id,
@@ -114,9 +129,35 @@ class File_Comparison_Runner extends \WP_Background_Process {
 	 * Unlock.
 	 *
 	 * @return $this
+	 *
+	 * @since 2.0.0
 	 */
 	protected function unlock_process() {
 		delete_site_transient( $this->identifier . '_process_lock' );
 		return $this;
+	}
+
+	/**
+	 * Should the process exit with wp_die?
+	 *
+	 * @param mixed $should_return What to return if filter says don't die, default is null.
+	 *
+	 * @return void|mixed
+	 *
+	 * @since 2.0.0
+	 */
+	protected function maybe_wp_die( $should_return = null ) {
+		/**
+		 * Should wp_die be used?
+		 *
+		 * @return bool
+		 *
+		 * @since 2.0.0
+		 */
+		if ( apply_filters( $this->identifier . '_wp_die', true ) ) {
+			wp_die();
+		}
+
+		return $should_return;
 	}
 }

@@ -8,12 +8,14 @@
  * Plugin URI: http://melapress.com/
  * Description: A hassle-free way to get alerted of file changes on your WordPress site & boost security.
  * Author: Melapress
- * Version: 2.0.2
+ * Contributors: Melapress
+ * Version: 2.1.0
  * Text Domain: website-file-changes-monitor
  * Author URI: http://melapress.com/
  * License: GPL2
  *
- * @package MFM
+ * @package MelapressLoginSecurity
+ * @since 2.0.0
  *
  * Requires PHP: 8.0
  * Network: true
@@ -21,7 +23,7 @@
 
 /*
 	Website Files Monitor
-	Copyright(c) 2023  Melapress  (email : info@melapress.com)
+	Copyright(c) 2024 Melapress  (email : info@melapress.com)
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License, version 3, as
 	published by the Free Software Foundation.
@@ -34,10 +36,13 @@
 	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+declare(strict_types=1);
 
+// Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
 
 define( 'MFM_WP_PATH', plugin_dir_path( __FILE__ ) );
 define( 'MFM_WP_URL', plugin_dir_url( __FILE__ ) );

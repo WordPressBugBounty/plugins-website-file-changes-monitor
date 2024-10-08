@@ -2,36 +2,52 @@
 /**
  * Handle plugin and theme updates.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
+
+declare(strict_types=1);
 
 namespace MFM;
 
-use \MFM\Helpers\Directory_And_File_Helpers; // phpcs:ignore
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use MFM\Helpers\Directory_And_File_Helpers;
 
 /**
  * Plugin and theme monitoring.
+ *
+ * @since 2.0.0
  */
 class Plugins_And_Themes_Monitor {
 
 	/**
-	 * Undocumented variable
+	 * Array of old themes.
 	 *
 	 * @var array
+	 *
+	 * @since 2.0.0
 	 */
 	private static $old_themes = array();
 
 	/**
-	 * Undocumented variable
+	 * Array of old plugins.
 	 *
 	 * @var array
+	 *
+	 * @since 2.0.0
 	 */
 	private static $old_plugins = array();
 
 	/**
-	 * Undocumented function
+	 * Fire up actions.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function init() {
 		$has_permission = ( current_user_can( 'install_plugins' ) || current_user_can( 'activate_plugins' ) || current_user_can( 'delete_plugins' ) || current_user_can( 'update_plugins' ) || current_user_can( 'install_themes' ) );
@@ -42,9 +58,11 @@ class Plugins_And_Themes_Monitor {
 	}
 
 	/**
-	 * Undocumented function
+	 * Monitor lists of themes and plugins.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function event_admin_init() {
 		self::$old_themes  = wp_get_themes();
@@ -52,9 +70,11 @@ class Plugins_And_Themes_Monitor {
 	}
 
 	/**
-	 * Undocumented function
+	 * Check for updates.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function event_admin_shutdown() {
 
@@ -95,18 +115,6 @@ class Plugins_And_Themes_Monitor {
 			}
 
 			self::update_plugins_and_themes_list();
-		}
-
-		// Uninstall plugin.
-		if ( $is_plugins && in_array( $action, array( 'delete-selected' ), true ) && current_user_can( 'delete_plugins' ) ) {
-            if ( ! isset( $post_array['verify-delete'] ) ) { // phpcs:ignore
-				// First step, before user approves deletion
-				// TODO store plugin data in session here.
-			} else {
-				// second step, after deletion approval
-				// TODO use plugin data from session.
-				// self::update_plugins_and_themes_list(); .
-			}
 		}
 
 		// Upgrade plugin.
@@ -165,10 +173,13 @@ class Plugins_And_Themes_Monitor {
 	}
 
 	/**
-	 * Undocumented function
+	 * Get plugin directory.
 	 *
 	 * @param string $plugin - Plugin path.
+	 *
 	 * @return string
+	 *
+	 * @since 2.0.0
 	 */
 	public static function get_plugin_dir( $plugin ) {
 		$position = strpos( $plugin, '/' );
@@ -179,9 +190,11 @@ class Plugins_And_Themes_Monitor {
 	}
 
 	/**
-	 * Undocumented function
+	 * Update stored list.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function update_plugins_and_themes_list() {
 		$plugin_list  = Directory_And_File_Helpers::create_plugin_keys();
@@ -209,7 +222,10 @@ class Plugins_And_Themes_Monitor {
 	 *
 	 * @param string $type - Item type.
 	 * @param string $item - Item type.
+	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function add_to_recent_update_list( $type, $item ) {
 		$current_list = get_site_option( MFM_PREFIX . 'plugins_and_themes_recent_updates', array() );
@@ -223,5 +239,28 @@ class Plugins_And_Themes_Monitor {
 		}
 
 		update_site_option( MFM_PREFIX . 'plugins_and_themes_recent_updates', $current_list );
+	}
+
+	/**
+	 * Check if given path is to an active plugin.
+	 *
+	 * @param string $path_to_check - Path.
+	 *
+	 * @return boolean
+	 *
+	 * @since 2.1.0
+	 */
+	public static function is_currently_active_plugin( $path_to_check ) {
+		$is_active_plugin = false;
+		$plugin_list      = Directory_And_File_Helpers::create_plugin_keys();
+
+		// Gather results held for this theme or plugin.
+		foreach ( $plugin_list as $plugin ) {
+			if ( str_contains( $path_to_check, $plugin ) ) {
+				$is_active_plugin = true;
+			}
+		}
+
+		return $is_active_plugin;
 	}
 }

@@ -2,13 +2,24 @@
 /**
  * Handle monitoring ongoing scans.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
+
+declare(strict_types=1);
 
 namespace MFM;
 
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+
 /**
  * Class to update and return current scan status.
+ *
+ * @since 2.0.0
  */
 class Scan_Status_Monitor {
 
@@ -16,6 +27,8 @@ class Scan_Status_Monitor {
 	 * Add rest route.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function setup_rest_route() {
 		register_rest_route(
@@ -37,7 +50,10 @@ class Scan_Status_Monitor {
 	 * Update current status.
 	 *
 	 * @param  array $new_status - Incoming.
+	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function update_status( $new_status ) {
 		$default = array(
@@ -56,6 +72,8 @@ class Scan_Status_Monitor {
 	 * Get current status.
 	 *
 	 * @return array
+	 *
+	 * @since 2.0.0
 	 */
 	public static function get_status() {
 		$return = get_site_option( MFM_PREFIX . 'monitor_status' );
@@ -67,6 +85,8 @@ class Scan_Status_Monitor {
 	 * Check if can get status.
 	 *
 	 * @return bool
+	 *
+	 * @since 2.0.0
 	 */
 	public static function get_status_permissions_check() {
 		return true;

@@ -2,15 +2,25 @@
 /**
  * Handle logging during scans.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
+
+declare(strict_types=1);
 
 namespace MFM\Helpers;
 
-use \MFM\Helpers\Settings_Helper; // phpcs:ignore
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use MFM\Helpers\Settings_Helper;
 
 /**
  * Utility file and directory functions.
+ *
+ * @since 2.0.0
  */
 class Logger {
 
@@ -19,15 +29,22 @@ class Logger {
 	 *
 	 * @param string $data     - Data to write to file.
 	 * @param bool   $override - Set to true if overriding the file.
+	 *
 	 * @return bool
+	 *
+	 * @since 2.0.0
 	 */
-	public static function mfm_write_to_log( $data, $override = false ) {
-		if ( ! is_dir( MFM_UPLOADS_DIR . MFM_LOGS_DIR ) ) {
-			self::mfm_create_index_file( MFM_LOGS_DIR );
-			self::mfm_create_htaccess_file( MFM_LOGS_DIR );
+	public static function write_to_log( $data, $override = false ) {
+		if ( 'yes' !== Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) {
+			return;
 		}
 
-		return self::mfm_write_to_file( trailingslashit( MFM_LOGS_DIR ) . 'mfm-debug.log', $data, $override );
+		if ( ! is_dir( MFM_UPLOADS_DIR . MFM_LOGS_DIR ) ) {
+			self::create_index_file( MFM_LOGS_DIR );
+			self::create_htaccess_file( MFM_LOGS_DIR );
+		}
+
+		return self::write_to_file( trailingslashit( MFM_LOGS_DIR ) . 'mfm-debug.log', $data, $override );
 	}
 
 	/**
@@ -35,10 +52,13 @@ class Logger {
 	 * avoid directory listing in the specified directory.
 	 *
 	 * @param string $dir_path - Directory Path.
+	 *
 	 * @return bool
+	 *
+	 * @since 2.0.0
 	 */
-	public static function mfm_create_index_file( $dir_path ) {
-		return self::mfm_write_to_file( trailingslashit( $dir_path ) . 'index.php', '<?php // Silence is golden' );
+	public static function create_index_file( $dir_path ) {
+		return self::write_to_file( trailingslashit( $dir_path ) . 'index.php', '<?php // Silence is golden' );
 	}
 
 	/**
@@ -46,19 +66,24 @@ class Logger {
 	 * block access to directory listing in the specified directory.
 	 *
 	 * @param string $dir_path - Directory Path.
+	 *
 	 * @return bool
+	 *
+	 * @since 2.0.0
 	 */
-	public static function mfm_create_htaccess_file( $dir_path ) {
-		return self::mfm_write_to_file( trailingslashit( $dir_path ) . '.htaccess', 'Deny from all' );
+	public static function create_htaccess_file( $dir_path ) {
+		return self::write_to_file( trailingslashit( $dir_path ) . '.htaccess', 'Deny from all' );
 	}
 
 	/**
 	 * Returns the timestamp for log files.
 	 *
 	 * @return string
+	 *
+	 * @since 2.0.0
 	 */
-	public static function mfm_get_log_timestamp() {
-		return '[' . date( 'd-M-Y H:i:s' ) . ' UTC]';
+	public static function get_log_timestamp() {
+		return '[' . gmdate( 'd-M-Y H:i:s' ) . ' UTC]';
 	}
 
 	/**
@@ -67,9 +92,12 @@ class Logger {
 	 * @param string $filename - File name.
 	 * @param string $content  - Contents of the file.
 	 * @param bool   $override - (Optional) True if overriding file contents.
+	 *
 	 * @return bool
+	 *
+	 * @since 2.0.0
 	 */
-	public static function mfm_write_to_file( $filename, $content, $override = false ) {
+	public static function write_to_file( $filename, $content, $override = false ) {
 		global $wp_filesystem;
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		WP_Filesystem();

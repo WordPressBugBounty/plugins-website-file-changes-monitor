@@ -2,20 +2,30 @@
 /**
  * Main class file for plugin, handles loading all other bits.
  *
- * @package mfm
+ * @package MFM
+ * @since 2.0.0
  */
 
-use \MFM\Helpers\Directory_And_File_Helpers; // phpcs:ignore
-use \MFM\Helpers\Settings_Helper; // phpcs:ignore
-use \MFM\Helpers\Logger; // phpcs:ignore
-use \MFM\Helpers\Emailer; // phpcs:ignore
-use \MFM\DB_Handler; // phpcs:ignore
-use \MFM\MFM_Fast_Cache; // phpcs:ignore
-use \MFM\Scan_Status_Monitor; // phpcs:ignore
-use \MFM\Crons\Cron_Handler; // phpcs:ignore
+declare(strict_types=1);
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use MFM\Helpers\Directory_And_File_Helpers;
+use MFM\Helpers\Settings_Helper;
+use MFM\Helpers\Logger;
+use MFM\Helpers\Emailer;
+use MFM\DB_Handler;
+use MFM\MFM_Fast_Cache;
+use MFM\Scan_Status_Monitor;
+use MFM\Crons\Cron_Handler;
 
 /**
  * Main MFM Class.
+ *
+ * @since 2.0.0
  */
 class MFM {
 
@@ -23,6 +33,8 @@ class MFM {
 	 * Background runner for directories.
 	 *
 	 * @var WP_Background_Process
+	 *
+	 * @since 2.0.0
 	 */
 	public static $dir_runner;
 
@@ -30,6 +42,8 @@ class MFM {
 	 * Background runner for files.
 	 *
 	 * @var WP_Background_Process
+	 *
+	 * @since 2.0.0
 	 */
 	public static $file_runner;
 
@@ -37,6 +51,8 @@ class MFM {
 	 * Background runner for comparisons.
 	 *
 	 * @var WP_Background_Process
+	 *
+	 * @since 2.0.0
 	 */
 	public static $file_comparison_runner;
 
@@ -44,17 +60,20 @@ class MFM {
 	 * Background runner for core files.
 	 *
 	 * @var WP_Background_Process
+	 *
+	 * @since 2.0.0
 	 */
 	public static $core_runner;
 
 	/**
 	 * Hooks init (nothing else) and calls things that need to run right away.
+	 *
+	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function on_load() {
 		MFM\Admin\Admin_Manager::actions();
-
-		// Runner crons.
-		add_filter( 'cron_schedules', array( '\MFM\Crons\Cron_Handler', 'cron_schedules' ) ); // phpcs:ignore
 
 		// Ajax.
 		add_action( 'wp_ajax_mfm_start_directory_runner', array( __CLASS__, 'start_directory_runner' ) );
@@ -79,9 +98,9 @@ class MFM {
 		add_action( 'rest_api_init', array( '\MFM\Scan_Status_Monitor', 'setup_rest_route' ) );
 
 		// File runner.
-		add_action( 'mfm_directory_runner_completed', array( __CLASS__, 'directory_run_completed' ) );
-		add_action( 'mfm_file_runner_completed', array( __CLASS__, 'file_run_completed' ) );
-		add_action( 'mfm_file_comparison_runner_completed', array( __CLASS__, 'file_comparison_run_completed' ) );
+		add_action( MFM_PREFIX . 'directory_runner_completed', array( __CLASS__, 'directory_run_completed' ) );
+		add_action( MFM_PREFIX . 'file_runner_completed', array( __CLASS__, 'file_run_completed' ) );
+		add_action( MFM_PREFIX . 'file_comparison_runner_completed', array( __CLASS__, 'file_comparison_run_completed' ) );
 		add_action( 'init', array( '\MFM\Plugins_And_Themes_Monitor', 'init' ) );
 
 		// WP Activity Log.
@@ -104,6 +123,8 @@ class MFM {
 	 * Install the plugins tables etc.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public function install() {
 		DB_Handler::install();
@@ -113,47 +134,49 @@ class MFM {
 	 * Add directory runner item to queue.
 	 *
 	 * @param  string $path - Path to add.
+	 *
 	 * @return void
 	 */
 	public static function push_item_to_list( $path ) {
-		self::$dir_runner->push_to_queue( $path );
-		self::$dir_runner->save()->dispatch();
+		if ( ! Directory_And_File_Helpers::is_path_ignored( $path ) ) {
+			self::$dir_runner->push_to_queue( $path );
+			self::$dir_runner->save()->dispatch();
+		}
 	}
 
 	/**
 	 * Start the scan process off as a whole.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function start_directory_runner() {
+
+		wp_cache_delete( MFM_PREFIX . 'events_cache' );
+
 		// Update Monitoring.
 		$details = array(
 			'status'                => 'started',
-			'start_time'            => current_time( 'timestamp' ), // phpcs:ignore
-			'current_step'          => 'Initialising',
+			'start_time'            => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
+			'current_step'          => 'Initializing',
 			'starting_events_count' => DB_Handler::get_events( true ),
 		);
 		Scan_Status_Monitor::update_status( $details );
 
-		if ( 'yes' === Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) {
-			$msg = Logger::mfm_get_log_timestamp() . ' SCAN STEP 1 - SCAN STARTED' . " \n";
-			Logger::mfm_write_to_log( $msg );
-		}
+		$msg = Logger::get_log_timestamp() . ' SCAN STEP 1 - SCAN STARTED' . " \n";
+		Logger::write_to_log( $msg );
 
-		$post_array = filter_input_array( INPUT_POST );
-		$query_args = array();
+		set_site_transient( MFM_PREFIX . 'dir_runner_started', current_time( 'timestamp' ), 1 ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 
-		set_site_transient( MFM_PREFIX . 'dir_runner_started', current_time( 'timestamp' ), 1 ); // phpcs:ignore
-
-		$current_id   = get_site_option( MFM_PREFIX . 'active_scan_id', 0 );
-		$this_scan_id = $current_id + 1;
+		$current_id = get_site_option( MFM_PREFIX . 'active_scan_id', 0 );
 		update_site_option( MFM_PREFIX . 'active_scan_id', $current_id + 1 );
 		update_site_option( MFM_PREFIX . 'scanner_running', true );
 
 		$data = array(
 			'path'        => '',
 			'event_type'  => 'file-scan-started',
-			'time'        => current_time( 'timestamp' ), // phpcs:ignore
+			'time'        => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 			'is_read'     => 'no',
 			'data'        => false,
 			'scan_run_id' => get_site_option( MFM_PREFIX . 'active_scan_id', 0 ),
@@ -183,11 +206,14 @@ class MFM {
 		foreach ( $base as $base_item ) {
 			$data = array(
 				'path' => $base_item,
-				'time' => current_time( 'timestamp' ), // phpcs:ignore
+				'time' => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 			);
 			DB_Handler::insert_data( DB_Handler::$scanned_directories_table_name, $data );
 			$items = Directory_And_File_Helpers::get_directories_from_path( $base_item );
 			foreach ( $items as $item ) {
+				if ( Directory_And_File_Helpers::is_path_ignored( $item ) ) {
+					continue;
+				}
 				self::$dir_runner->push_to_queue( $item );
 				self::$dir_runner->save();
 			}
@@ -203,20 +229,21 @@ class MFM {
 	 * Directory run done, so fire off the file runner.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function directory_run_completed() {
-		$status = get_site_option( MFM_PREFIX . 'monitor_status' );
-		MFM_Fast_Cache::dump_into_db( 'directory_runner_cache' );
+		DB_Handler::dump_into_db( 'directory_runner_cache' );
 
-		if ( 'yes' === Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) {
-			$msg = Logger::mfm_get_log_timestamp() . ' SCAN STEP 2 - DIRECTORIES SCANNED, START FILE RUNNER' . " \n";
-			Logger::mfm_write_to_log( $msg );
-		}
+		$msg = Logger::get_log_timestamp() . ' SCAN STEP 2 - DIRECTORIES SCANNED, START FILE RUNNER' . " \n";
+		Logger::write_to_log( $msg );
+
+		wp_cache_delete( MFM_PREFIX . 'events_cache' );
 
 		// Update Monitoring.
 		$details = array(
 			'status'               => 'directory_scan_complete',
-			'start_time'           => current_time( 'timestamp' ), // phpcs:ignore
+			'start_time'           => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 			'current_step'         => 'Directory Scan Complete',
 			'current_events_count' => DB_Handler::get_events( true ),
 		);
@@ -229,17 +256,19 @@ class MFM {
 	 * Deep scan directories and record files within.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function start_file_runner() {
-		if ( 'yes' === Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) {
-			$msg = Logger::mfm_get_log_timestamp() . ' SCAN STEP 3 - START FILE RUNNER' . " \n";
-			Logger::mfm_write_to_log( $msg );
-		}
+		$msg = Logger::get_log_timestamp() . ' SCAN STEP 3 - START FILE RUNNER' . " \n";
+		Logger::write_to_log( $msg );
+
+		wp_cache_delete( MFM_PREFIX . 'events_cache' );
 
 		// Update Monitoring.
 		$details = array(
 			'status'               => 'file_runner_started',
-			'start_time'           => current_time( 'timestamp' ), // phpcs:ignore
+			'start_time'           => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 			'current_step'         => 'File Runner Started',
 			'current_events_count' => DB_Handler::get_events( true ),
 		);
@@ -258,45 +287,43 @@ class MFM {
 	 *  File run completed, store or compare.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function file_run_completed() {
-		if ( 'yes' === Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) {
-			$msg = Logger::mfm_get_log_timestamp() . ' SCAN STEP 4 - FILE RUN COMPLETED' . " \n";
-			Logger::mfm_write_to_log( $msg );
-		}
+		$msg = Logger::get_log_timestamp() . ' SCAN STEP 4 - FILE RUN COMPLETED' . " \n";
+		Logger::write_to_log( $msg );
 
 		// Check if this is the 1st run.
 		$needed = DB_Handler::get_directory_runner_results( true, 0, true );
 
+		wp_cache_delete( MFM_PREFIX . 'events_cache' );
+
 		// Update Monitoring.
 		$details = array(
 			'status'               => 'file_runner_complete',
-			'start_time'           => current_time( 'timestamp' ), // phpcs:ignore
+			'start_time'           => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 			'current_step'         => ( $needed > 0 ) ? 'File Runner Complete, Starting Comparison' : 'Initial File Scan Complete',
 			'current_events_count' => DB_Handler::get_events( true ),
 		);
 		Scan_Status_Monitor::update_status( $details );
 
 		if ( $needed > 0 ) {
-			if ( 'yes' === Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) {
-				$msg = Logger::mfm_get_log_timestamp() . ' SCAN STEP 5 - COMPARE DIRECTORY CHANGES' . " \n";
-				Logger::mfm_write_to_log( $msg );
-			}
+			$msg = Logger::get_log_timestamp() . ' SCAN STEP 5 - COMPARE DIRECTORY CHANGES' . " \n";
+			Logger::write_to_log( $msg );
 
 			DB_Handler::compare_and_report_directory_changes();
 			delete_site_option( MFM_PREFIX . 'scanner_running' );
 		} else {
-			if ( 'yes' === Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) {
-				$msg = Logger::mfm_get_log_timestamp() . ' SCAN STEP 5 - INITIAL FILE COMPARISON RUN COMPLETE' . " \n";
-				Logger::mfm_write_to_log( $msg );
-			}
+			$msg = Logger::get_log_timestamp() . ' SCAN STEP 5 - INITIAL FILE COMPARISON RUN COMPLETE' . " \n";
+			Logger::write_to_log( $msg );
 
 			update_site_option( MFM_PREFIX . 'scanner_running', false );
 
 			// Update Monitoring.
 			$details = array(
 				'status'               => 'scan_complete',
-				'start_time'           => current_time( 'timestamp' ), // phpcs:ignore
+				'start_time'           => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 				'current_step'         => 'Initial File Scan Complete',
 				'current_events_count' => DB_Handler::get_events( true ),
 			);
@@ -309,7 +336,7 @@ class MFM {
 			$data       = array(
 				'path'        => '',
 				'event_type'  => 'file-scan-complete',
-				'time'        => current_time( 'timestamp' ), // phpcs:ignore
+				'time'        => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 				'is_read'     => 'no',
 				'data'        => '',
 				'scan_run_id' => $current_id,
@@ -317,7 +344,7 @@ class MFM {
 
 			DB_Handler::add_event( $data );
 
-			update_site_option( MFM_PREFIX . 'last_scan_time', current_time( 'timestamp' ) ); // phpcs:ignore
+			update_site_option( MFM_PREFIX . 'last_scan_time', current_time( 'timestamp' ) ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 			delete_site_option( MFM_PREFIX . 'scanner_running' );
 
 		}
@@ -327,12 +354,12 @@ class MFM {
 	 * File run completed, store or compare.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function start_file_comparison_runner() {
-		if ( 'yes' === Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) {
-			$msg = Logger::mfm_get_log_timestamp() . ' SCAN STEP 6 - COMPARE FILE CHANGES' . " \n";
-			Logger::mfm_write_to_log( $msg );
-		}
+		$msg = Logger::get_log_timestamp() . ' SCAN STEP 6 - COMPARE FILE CHANGES' . " \n";
+		Logger::write_to_log( $msg );
 
 		$file_result = DB_Handler::get_file_runner_results( false );
 		foreach ( $file_result as $item ) {
@@ -346,22 +373,24 @@ class MFM {
 	 * Start file comparison step.
 	 *
 	 * @return void
+	 *
+	 * @since 2.0.0
 	 */
 	public static function file_comparison_run_completed() {
-		if ( 'yes' === Settings_Helper::get_setting( 'debug-logging-enabled', 'no' ) ) {
-			$msg = Logger::mfm_get_log_timestamp() . ' SCAN STEP 7 - FILE COMPARISON RUN COMPLETE' . " \n";
-			Logger::mfm_write_to_log( $msg );
-		}
+		$msg = Logger::get_log_timestamp() . ' SCAN STEP 7 - FILE COMPARISON RUN COMPLETE' . " \n";
+		Logger::write_to_log( $msg );
 
 		// Store it all up.
 		DB_Handler::store_scanned_data();
+
+		wp_cache_delete( MFM_PREFIX . 'events_cache' );
 
 		update_site_option( MFM_PREFIX . 'event_notification_dismissed', false );
 
 		// Update Monitoring.
 		$details = array(
 			'status'               => 'scan_complete',
-			'start_time'           => current_time( 'timestamp' ), // phpcs:ignore
+			'start_time'           => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 			'current_step'         => 'All Done',
 			'current_events_count' => DB_Handler::get_events( true ),
 		);
@@ -371,7 +400,7 @@ class MFM {
 		$data       = array(
 			'path'        => '',
 			'event_type'  => 'file-scan-complete',
-			'time'        => current_time( 'timestamp' ), // phpcs:ignore
+			'time'        => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 			'is_read'     => 'no',
 			'data'        => '',
 			'scan_run_id' => $current_id,
@@ -379,7 +408,7 @@ class MFM {
 
 		DB_Handler::add_event( $data );
 
-		update_site_option( MFM_PREFIX . 'last_scan_time', current_time( 'timestamp' ) ); // phpcs:ignore
+		update_site_option( MFM_PREFIX . 'last_scan_time', current_time( 'timestamp' ) ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 
 		Emailer::send_scan_summary( $current_id );
 		update_site_option( MFM_PREFIX . 'scanner_running', false );
