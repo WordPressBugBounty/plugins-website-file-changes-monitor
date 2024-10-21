@@ -367,7 +367,7 @@ class DB_Handler {
 				}
 			}
 
-			if ( Plugins_And_Themes_Monitor::is_currently_active_plugin( $item['path'] ) || Directory_And_File_Helpers::is_path_ignored( $item['path'] ) || Directory_And_File_Helpers::is_path_excluded( $item['path'] ) ) {
+			if ( Directory_And_File_Helpers::is_path_ignored( $item['path'] ) || Directory_And_File_Helpers::is_path_excluded( $item['path'] ) ) {
 				continue;
 			}
 

@@ -9,7 +9,7 @@
  * Description: A hassle-free way to get alerted of file changes on your WordPress site & boost security.
  * Author: Melapress
  * Contributors: Melapress
- * Version: 2.1.0
+ * Version: 2.1.1
  * Text Domain: website-file-changes-monitor
  * Author URI: http://melapress.com/
  * License: GPL2

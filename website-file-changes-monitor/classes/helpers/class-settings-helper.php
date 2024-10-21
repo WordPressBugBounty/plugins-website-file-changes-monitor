@@ -551,4 +551,90 @@ class Settings_Helper {
 
 		return $current_value;
 	}
+
+	/**
+	 * Sanitize search input to ensure its a filename/dir only. Modified version of WPs sanitize_file_name customized to suit.
+	 *
+	 * @param string $filename - Input to check.
+	 *
+	 * @return string - Cleaned input.
+	 *
+	 * @since 2.1.1
+	 */
+	public static function sanitize_search_input( $filename ) {
+		$filename_raw = $filename;
+		$filename     = remove_accents( $filename );
+	
+		$special_chars = array( '?', '[', ']', '\\', '=', '<', '>', ':', ';', ',', "'", '"', '&', '$', '#', '*', '(', ')', '|', '~', '`', '!', '{', '}', '%', '+', '’', '«', '»', '”', '“', chr( 0 ) );
+	
+		// Check for support for utf8 in the installed PCRE library once and store the result in a static.
+		static $utf8_pcre = null;
+		if ( ! isset( $utf8_pcre ) ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			$utf8_pcre = @preg_match( '/^./u', 'a' );
+		}
+	
+		if ( ! seems_utf8( $filename ) ) {
+			$_ext     = pathinfo( $filename, PATHINFO_EXTENSION );
+			$_name    = pathinfo( $filename, PATHINFO_FILENAME );
+			$filename = sanitize_title_with_dashes( $_name ) . '.' . $_ext;
+		}
+	
+		if ( $utf8_pcre ) {
+			$filename = preg_replace( "#\x{00a0}#siu", ' ', $filename );
+		}
+	
+		$filename = str_replace( $special_chars, '', $filename );
+		$filename = str_replace( array( '%20', '+' ), '-', $filename );
+		$filename = preg_replace( '/\.{2,}/', '.', $filename );
+		$filename = preg_replace( '/[\r\n\t -]+/', '-', $filename );
+		$filename = trim( $filename, '.-_' );
+	
+		if ( ! str_contains( $filename, '.' ) ) {
+			$mime_types = wp_get_mime_types();
+			$filetype   = wp_check_filetype( 'test.' . $filename, $mime_types );
+			if ( $filetype['ext'] === $filename ) {
+				$filename = 'unnamed-file.' . $filetype['ext'];
+			}
+		}
+	
+		// Split the filename into a base and extension[s].
+		$parts = explode( '.', $filename );
+	
+		// Return if only one extension.
+		if ( count( $parts ) <= 2 ) {
+			return $filename;
+		}
+	
+		// Process multiple extensions.
+		$filename  = array_shift( $parts );
+		$extension = array_pop( $parts );
+		$mimes     = get_allowed_mime_types();
+	
+		/*
+		 * Loop over any intermediate extensions. Postfix them with a trailing underscore
+		 * if they are a 2 - 5 character long alpha string not in the allowed extension list.
+		 */
+		foreach ( (array) $parts as $part ) {
+			$filename .= '.' . $part;
+	
+			if ( preg_match( '/^[a-zA-Z]{2,5}\d?$/', $part ) ) {
+				$allowed = false;
+				foreach ( $mimes as $ext_preg => $mime_match ) {
+					$ext_preg = '!^(' . $ext_preg . ')$!i';
+					if ( preg_match( $ext_preg, $part ) ) {
+						$allowed = true;
+						break;
+					}
+				}
+				if ( ! $allowed ) {
+					$filename .= '_';
+				}
+			}
+		}
+	
+		$filename .= '.' . $extension;
+
+		return $filename;
+	}
 }

@@ -105,7 +105,11 @@ class Setting_Validator {
 				$incoming = array();
 			}
 			foreach ( $incoming as $item ) {
-				$sanitized[] = sanitize_text_field( $item );			
+				if ( 'excluded_file_extensions' === $setting_to_validate ) {
+					$sanitized[] = sanitize_text_field( $item );
+				} else {
+					$sanitized[] = Settings_Helper::sanitize_search_input( $item );
+				}
 			}
 			if ( 'enabled-notifications' === $setting_to_validate && empty( $incoming ) ) {
 				return false;

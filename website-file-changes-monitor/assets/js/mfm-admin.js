@@ -655,7 +655,7 @@ jQuery(document).ready(function() {
 
 		if ('' != newItemInput) {
 			let pattern = '';
-			if (targetList == 'excluded_directories' || targetList == 'ignored_directories' || targetList == 'excluded_files') {
+			if (targetList == 'excluded_directories' || targetList == 'ignored_directories' || targetList == 'excluded_files' || targetList == 'allowed-in-core-files') {
 				pattern = /^\s*[a-z-._\d,\s/]+\s*$/i;
 			} else if (targetList == 'excluded_file_extensions') {
 				pattern = /^\s*[a-z-._\d,\s]+\s*$/i;
@@ -667,7 +667,7 @@ jQuery(document).ready(function() {
 				if (targetList == 'excluded_directories' || targetList == 'ignored_directories') {
 					jQuery(responseArea).find('span').text(mfmJSData.dirInvalid);
 					jQuery(responseArea).slideDown(300);
-				} else if (targetList == 'excluded_files') {
+				} else if (targetList == 'excluded_files' || targetList == 'allowed-in-core-files') {
 					jQuery(responseArea).find('span').text(mfmJSData.fileInvalid);
 					jQuery(responseArea).slideDown(300);
 				} else if (targetList == 'excluded_file_extensions') {

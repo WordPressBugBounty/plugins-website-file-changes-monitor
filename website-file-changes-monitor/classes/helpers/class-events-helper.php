@@ -119,7 +119,7 @@ class Events_Helper {
 			<?php
 		} elseif ( str_contains( strtolower( $event_type ), 'core' ) || in_array( $event['path'], $core_file_keys, true ) || ABSPATH === trim( trailingslashit( $event['path'] ) ) || ABSPATH === (string) $path || ABSPATH . 'wp-includes/' === trailingslashit( (string) $path ) || ABSPATH . 'wp-admin/' === trailingslashit( (string) $path ) ) {
 			?>
-				<strong style="color: red;"><?php echo esc_html__( 'CORE', 'website-file-changes-monitor' ); ?></strong><span class="mfm-info-hint hint--right" aria-label="' . esc_html__( 'This event indicates a core file was has been modified from its expected hash', 'website-file-changes-monitor' ) . '"><span class="dashicons dashicons-warning"></span></span><br>
+				<strong style="color: red;"><?php echo esc_html__( 'CORE', 'website-file-changes-monitor' ); ?></strong><span class="mfm-info-hint hint--right" aria-label="<?php echo esc_html__( 'This event indicates a core file was has been modified from its expected hash', 'website-file-changes-monitor' ); ?>"><span class="dashicons dashicons-warning"></span></span><br>
 			<?php
 		} else {
 			?>

@@ -6,7 +6,7 @@ License URI: https://www.gnu.org/licenses/gpl.html
 Tags: security, file monitor, file integrity scanner, file security, file changes
 Requires at least: 5.0
 Tested up to: 6.6.2
-Stable tag: 2.1.0
+Stable tag: 2.1.1
 Requires PHP: 8.0
 
 Get alerted via email of file changes on your WordPress sites. No false positives!
@@ -161,27 +161,15 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Changelog ==
 
-= 2.1.0 (2024-10-08) =
-
- * **New features**
-	 * The plugin has a new setting so admins can change the default "from" email address the plugin uses when sending email notifications.
-	 * A new setting to completely exclude files / directories from scan.
+= 2.1.1 (2024-10-21) =
 
  * **Plugin improvements**
-	 * Plugin now can either ignore a file during a scan or exclude; ignore - file changes won't be reported but the plugin is "aware" of the file, and exclude is exclude completely.
-	 * All exclude settings apply to the WordPress core files as well.
-	 * The restore default settings setting has been updated allowing users to restore the default of specific individual settings.
-	 * Reviewed and updated all the plugin code to meet the WordPress Coding Standards and applied generic reliability improvements.
-	 * Improved the performance of the plugin - processing of files during the scan is now much faster.
-	 * Improved the help text / settings text of almost all settings.
-	 * Standardized the UTM parameters used in the plugin's links.
-	 * Improved the install wizard - added more slides to give the user more granular options / settings.
-	 * Added several checks in the wizard which could lead to issues. For example added a check to require an email address if user chooses not to use the default one.
-	 * Improved the sanitization of certain parameters in the plugin, for improved security.
+	 * Added more checks and user input sanitization in the plugin.
 
- * **Bug fixes**
-	 * Fixed a few edge cases with the scan scheduler selectors. For example, switching AM to PM and changing the default hour only saves the hour change.
-	 * Fixed a number of issues which are specific to some setups in which the same file changes keep reappearing with each scan.
-	 * Fixed a possible RFI issue in the plugin's Help & About Us page.
-	 * Fixed a fatal error generated when a user disables all the notifications and tries to save the settings.
-	 * Fixed a number of PHP warnings / better support for different PHP versions.
+ * **Security fix**
+	 * Fixed a SQL injection in the Search placeholder.
+
+* **Big fixes**
+	 * Fixed a failed nonce issue when searching for some speicfic strings.
+	 * Fixed: New added plugin or files via the media module not reported in plugin.
+

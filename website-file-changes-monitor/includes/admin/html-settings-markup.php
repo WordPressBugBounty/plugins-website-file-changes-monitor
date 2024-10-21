@@ -451,8 +451,11 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 									data-trigger-popup-title="<?php esc_html_e( 'Adding an allowed file', 'website-file-changes-monitor' ); ?>"
 								/>
 							</div>
-							<br>
 
+							<div class="mfm-removals mfm-validation-response" data-validation-response-for="allowed-in-core-files"><span></span></div>
+
+							<br>
+							
 							<div class="mfm-files-container">
 								<div class="item-list allowed-in-core-list" id="mfm-allowed-in-core-files-list" data-list-items-wrapper-for="allowed-in-core-files">
 									<?php if ( is_array( $mfm_settings['allowed-in-core-files'] ) ) : ?>

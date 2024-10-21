@@ -363,12 +363,17 @@ class AJAX_Tasks {
 	public static function event_lookup() {
 		$nonce = isset( $_POST['nonce'] ) ? sanitize_key( wp_unslash( $_POST['nonce'] ) ) : '';
 
-		if ( ! isset( $_POST['lookup_target'] ) || empty( $nonce ) || ! wp_verify_nonce( $nonce, MFM_PREFIX . 'event_lookup_nonce' ) ) {
+		if ( ! isset( $_POST['lookup_target'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'No search term provided', 'website-file-changes-monitor' ) ) );
+			return;
+		}
+		if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, MFM_PREFIX . 'event_lookup_nonce' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Failed nonce check', 'website-file-changes-monitor' ) ) );
 			return;
 		}
+		$event_lookup = sanitize_textarea_field( wp_unslash( $_POST['lookup_target'] ) );
 
-		$found = DB_Handler::lookup_event( sanitize_textarea_field( wp_unslash( $_POST['lookup_target'] ) ) );
+		$found = DB_Handler::lookup_event( Settings_Helper::sanitize_search_input( $event_lookup ) );
 
 		if ( isset( $found[0] ) ) {
 			$markup = Admin_Manager::create_events_list_markup( $found );

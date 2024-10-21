@@ -2,14 +2,14 @@
 # This file is distributed under the GPL2.
 msgid ""
 msgstr ""
-"Project-Id-Version: Melapress File Monitor 2.1.0\n"
+"Project-Id-Version: Melapress File Monitor 2.1.1\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/website-file-changes-monitor\n"
 "Last-Translator: Melapress <info@melapress.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2024-10-08T08:56:19+00:00\n"
+"POT-Creation-Date: 2024-10-21T08:51:11+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.10.0\n"
 "X-Domain: website-file-changes-monitor\n"
@@ -270,9 +270,9 @@ msgid "Mark currently visible events as read"
 msgstr ""
 
 #: classes/admin/class-admin-manager.php:340
-#: includes/admin/html-settings-markup.php:642
-#: includes/admin/html-settings-markup.php:692
-#: includes/admin/html-settings-markup.php:713
+#: includes/admin/html-settings-markup.php:645
+#: includes/admin/html-settings-markup.php:695
+#: includes/admin/html-settings-markup.php:716
 msgid "Cancel"
 msgstr ""
 
@@ -328,9 +328,9 @@ msgstr ""
 #: classes/admin/class-ajax-tasks.php:214
 #: classes/admin/class-ajax-tasks.php:254
 #: classes/admin/class-ajax-tasks.php:330
-#: classes/admin/class-ajax-tasks.php:367
-#: classes/admin/class-ajax-tasks.php:399
-#: classes/admin/class-ajax-tasks.php:422
+#: classes/admin/class-ajax-tasks.php:371
+#: classes/admin/class-ajax-tasks.php:404
+#: classes/admin/class-ajax-tasks.php:427
 #: classes/helpers/class-emailer.php:141
 msgid "Failed nonce check"
 msgstr ""
@@ -380,19 +380,23 @@ msgstr ""
 #: classes/admin/class-ajax-tasks.php:238
 #: classes/admin/class-ajax-tasks.php:293
 #: classes/admin/class-ajax-tasks.php:337
-#: classes/admin/class-ajax-tasks.php:429
+#: classes/admin/class-ajax-tasks.php:434
 msgid "All done"
 msgstr ""
 
-#: classes/admin/class-ajax-tasks.php:376
+#: classes/admin/class-ajax-tasks.php:367
+msgid "No search term provided"
+msgstr ""
+
+#: classes/admin/class-ajax-tasks.php:381
 msgid "found, displaying below"
 msgstr ""
 
-#: classes/admin/class-ajax-tasks.php:382
+#: classes/admin/class-ajax-tasks.php:387
 msgid "not found"
 msgstr ""
 
-#: classes/admin/class-ajax-tasks.php:406
+#: classes/admin/class-ajax-tasks.php:411
 msgid "Scan cancelled"
 msgstr ""
 
@@ -581,6 +585,10 @@ msgstr ""
 msgid "CORE"
 msgstr ""
 
+#: classes/helpers/class-events-helper.php:122
+msgid "This event indicates a core file was has been modified from its expected hash"
+msgstr ""
+
 #: classes/helpers/class-events-helper.php:126
 msgid "OTHER"
 msgstr ""
@@ -613,19 +621,19 @@ msgstr ""
 msgid "Empty directory"
 msgstr ""
 
-#: classes/helpers/class-setting-validator.php:147
+#: classes/helpers/class-setting-validator.php:151
 msgid "Please ensure at least one Notification type is enabled"
 msgstr ""
 
-#: classes/helpers/class-setting-validator.php:148
+#: classes/helpers/class-setting-validator.php:152
 msgid "Please provide a valid email address"
 msgstr ""
 
-#: classes/helpers/class-setting-validator.php:149
+#: classes/helpers/class-setting-validator.php:153
 msgid "Directory is not valid"
 msgstr ""
 
-#: classes/helpers/class-setting-validator.php:150
+#: classes/helpers/class-setting-validator.php:154
 msgid "Ignored directory already in excluded list, please remove it to continue"
 msgstr ""
 
@@ -1214,7 +1222,7 @@ msgstr ""
 #: includes/admin/html-settings-markup.php:275
 #: includes/admin/html-settings-markup.php:312
 #: includes/admin/html-settings-markup.php:348
-#: includes/admin/html-settings-markup.php:470
+#: includes/admin/html-settings-markup.php:473
 msgid "will be removed on next save."
 msgstr ""
 
@@ -1351,199 +1359,199 @@ msgstr ""
 msgid "Adding an allowed file"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:479
+#: includes/admin/html-settings-markup.php:482
 msgid "Which file changes do you want to be notified of?"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:483
+#: includes/admin/html-settings-markup.php:486
 msgid "Notify me when files are"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:488
+#: includes/admin/html-settings-markup.php:491
 msgid "Added"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:493
+#: includes/admin/html-settings-markup.php:496
 msgid "Deleted"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:498
+#: includes/admin/html-settings-markup.php:501
 msgid "Modified"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:507
+#: includes/admin/html-settings-markup.php:510
 msgid "Where should the plugin send the file changes notification?"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:508
+#: includes/admin/html-settings-markup.php:511
 msgid "By default the plugin sends the email notifications to the administrator email address configured in the WordPress settings. Use the below setting to send the email notification to a different email address. You can specify multiple email addresses by separating them with a comma."
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:511
+#: includes/admin/html-settings-markup.php:514
 msgid "Notify this address"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:516
+#: includes/admin/html-settings-markup.php:519
 msgid "Use admin email address in website settings."
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:521
+#: includes/admin/html-settings-markup.php:524
 msgid "Use a different email:"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:522
+#: includes/admin/html-settings-markup.php:525
 msgid "Enter email"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:526
+#: includes/admin/html-settings-markup.php:529
 msgid "Send a test email"
 msgstr ""
 
 #. Translators: Contact us hyperlink
-#: includes/admin/html-settings-markup.php:529
+#: includes/admin/html-settings-markup.php:532
 msgid "Oops! Email sending failed. Please %s for assistance."
 msgstr ""
 
 #. Translators: Contact us hyperlink
-#: includes/admin/html-settings-markup.php:529
+#: includes/admin/html-settings-markup.php:532
 msgid "contact us"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:538
+#: includes/admin/html-settings-markup.php:541
 msgid "Which email address should the plugin use as a from address?"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:539
+#: includes/admin/html-settings-markup.php:542
 msgid "By default when the plugin sends an email notification it uses the email address specified in this website’s general settings. Though you can change the email address and display name from this section."
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:542
+#: includes/admin/html-settings-markup.php:545
 msgid "From Email & Name"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:548
+#: includes/admin/html-settings-markup.php:551
 msgid "Use the email address from the WordPress general settings"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:553
+#: includes/admin/html-settings-markup.php:556
 msgid "Use another email address"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:557
+#: includes/admin/html-settings-markup.php:560
 msgid "Email Address"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:562
+#: includes/admin/html-settings-markup.php:565
 msgid "Display Name"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:572
+#: includes/admin/html-settings-markup.php:575
 msgid "How many file changes should the plugin report in the email?"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:573
+#: includes/admin/html-settings-markup.php:576
 msgid "To avoid long emails, by default the plugin only reports up to 10 changes per file type change. You can increase or decrease the number of reported file changes in the email from the below setting:"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:576
+#: includes/admin/html-settings-markup.php:579
 msgid "Number of file changes"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:587
+#: includes/admin/html-settings-markup.php:590
 msgid "When should the plugin send you an email?"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:588
+#: includes/admin/html-settings-markup.php:591
 msgid "Use the settings below to specify when the plugin should send you an email."
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:591
+#: includes/admin/html-settings-markup.php:594
 msgid "Email settings"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:596
+#: includes/admin/html-settings-markup.php:599
 msgid "Send me an email when file changes are detected"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:602
+#: includes/admin/html-settings-markup.php:605
 msgid "Send me an email even when a scan finishes and no file changes are detected"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:613
+#: includes/admin/html-settings-markup.php:616
 msgid "Temporarily disable file scanning"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:614
+#: includes/admin/html-settings-markup.php:617
 msgid "Use the below switch to disable file scanning. When you disable and re-enable scanning, the plugin will compare the file scan to those of the last scan before it was disabled."
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:617
+#: includes/admin/html-settings-markup.php:620
 msgid "File scanning"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:627
+#: includes/admin/html-settings-markup.php:630
 msgid "A scan is in progress, disabling logging will abort this scan."
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:634
+#: includes/admin/html-settings-markup.php:637
 msgid "Cancel scan in-progress"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:637
+#: includes/admin/html-settings-markup.php:640
 msgid "Cancel active scan"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:640
+#: includes/admin/html-settings-markup.php:643
 msgid "Cancel scan"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:642
+#: includes/admin/html-settings-markup.php:645
 msgid "Are you sure?"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:642
-#: includes/admin/html-settings-markup.php:692
-#: includes/admin/html-settings-markup.php:713
+#: includes/admin/html-settings-markup.php:645
+#: includes/admin/html-settings-markup.php:695
+#: includes/admin/html-settings-markup.php:716
 msgid "Proceed"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:650
+#: includes/admin/html-settings-markup.php:653
 msgid "Debug & uninstall settings"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:652
+#: includes/admin/html-settings-markup.php:655
 msgid "Enable the debug logging when requested by support. This is used for support."
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:652
+#: includes/admin/html-settings-markup.php:655
 msgid "The debug log file is saved in the /wp-content/uploads/mfm-logs/ folder on your website."
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:656
+#: includes/admin/html-settings-markup.php:659
 msgid "Debug logs"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:671
+#: includes/admin/html-settings-markup.php:674
 msgid "Delete plugin data upon uninstall"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:687
 #: includes/admin/html-settings-markup.php:690
+#: includes/admin/html-settings-markup.php:693
 msgid "Purge plugin data"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:692
+#: includes/admin/html-settings-markup.php:695
 msgid "Are you sure? This will remove ALL data, settings and events."
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:701
+#: includes/admin/html-settings-markup.php:704
 msgid "Restore plugin setting"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:711
+#: includes/admin/html-settings-markup.php:714
 msgid "Restore setting to default"
 msgstr ""
 
-#: includes/admin/html-settings-markup.php:713
+#: includes/admin/html-settings-markup.php:716
 msgid "Are you sure? This reset this setting to its default value."
 msgstr ""
