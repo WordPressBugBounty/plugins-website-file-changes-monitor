@@ -5,8 +5,8 @@ License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl.html
 Tags: security, file monitor, file integrity scanner, file security, file changes
 Requires at least: 5.0
-Tested up to: 6.6.2
-Stable tag: 2.1.1
+Tested up to: 6.7.0
+Stable tag: 2.2.0
 Requires PHP: 8.0
 
 Get alerted via email of file changes on your WordPress sites. No false positives!
@@ -161,15 +161,25 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Changelog ==
 
-= 2.1.1 (2024-10-21) =
+= 2.2.0 (2024-12-10) =
+
+ * **New features**
+	 * Detection and reporting of file and folder permissions changes.
 
  * **Plugin improvements**
-	 * Added more checks and user input sanitization in the plugin.
+	 * Notifications can now be sent to multiple email addresses.
+	 * Overall code improvement to the initial file scan function.
+	 * Reintroduced the reporting of events in [WP activity log](https://melapress.com/wordpress-activity-log/).
 
  * **Security fix**
-	 * Fixed a SQL injection in the Search placeholder.
+	 
+	 * Fixed a medium security issue reported by Mika (via Patchstack).
 
-* **Big fixes**
-	 * Fixed a failed nonce issue when searching for some speicfic strings.
-	 * Fixed: New added plugin or files via the media module not reported in plugin.
+ * **Bug fixes**
+	 
+	 * Fixed a bug which stopped marking a single event as read from functioning.
+	 * Fixed a bug which caused pagination settings to not be saved on page refresh.
+	 * Fixed issue with sanitization of allowed core files.
+	 * Fixed readout of number of ‘notification bubble’ of current events.
 
+Refer to the complete [plugin changelog](https://melapress.com/support/kb/website-file-changes-monitor-plugin-changelog/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm) for more detailed information about what was new, improved and fixed in previous version updates of Melapress File Monitor.

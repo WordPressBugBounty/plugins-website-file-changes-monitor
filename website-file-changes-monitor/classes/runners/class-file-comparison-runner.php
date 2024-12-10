@@ -55,7 +55,7 @@ class File_Comparison_Runner extends \WP_Background_Process {
 	 * @since 2.0.0
 	 */
 	protected function task( $item ) {
-		$changes = DB_Handler::compare_file_changes( $item['path'], $item['data_hash'], $item['file_paths'], $item['file_hashes'] );
+		$changes = DB_Handler::compare_file_changes( $item['path'], $item['data_hash'], $item['file_paths'], $item['file_hashes'], $item['file_permissions'] );
 
 		if ( ! empty( $changes ) ) {
 			$is_known         = false;
@@ -106,6 +106,9 @@ class File_Comparison_Runner extends \WP_Background_Process {
 			}
 			if ( isset( $changes['removed'] ) ) {
 				array_push( $context_of_changes, 'removed' );
+			}
+			if ( isset( $changes['permissions_changed'] ) ) {
+				array_push( $context_of_changes, 'permissions-changed' );
 			}
 
 			if ( ! empty( $changes ) ) {

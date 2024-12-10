@@ -133,12 +133,26 @@ class Settings_Helper {
 			return false;
 		}
 
+		if ( get_site_option( MFM_PREFIX . $setting, self::get_settings_default_value( $setting ) ) !== $value ) {
+			do_action( MFM_PREFIX . 'setting_updated', $setting, get_site_option( MFM_PREFIX . $setting, self::get_settings_default_value( $setting ) ), $value );
+		}
+
 		update_site_option( MFM_PREFIX . $setting, $value, false );
+
 		self::$settings[ $setting ] = $value;
+		return true;
+	}
+
+	/**
+	 * Scan time has changed, so clear up and allow it to be re-set.
+	 *
+	 * @return void
+	 *
+	 * @since 2.2.0
+	 */
+	public static function clear_scan_schedule() {
 		delete_transient( MFM_PREFIX . 'next_scan_time' );
 		wp_clear_scheduled_hook( Cron_Handler::$schedule_hook );
-
-		return true;
 	}
 
 	/**
@@ -178,7 +192,7 @@ class Settings_Helper {
 			'scan-hour'                    => '02',
 			'scan-day'                     => '1',
 			'scan-date'                    => '1',
-			'scan-hour-am'                 => 'AM',
+			'scan-hour-am'                 => 'am',
 			'base_paths_to_scan'           => $base_paths_to_scan,
 			'excluded_file_extensions'     => $default_excluded_extensions,
 			'excluded_directories'         => $default_excluded_dirs,
@@ -199,6 +213,7 @@ class Settings_Helper {
 				'added',
 				'deleted',
 				'modified',
+				'permissions_changed',
 			),
 			'email_notice_type'            => 'admin',
 			'custom_email_address'         => '',
@@ -214,6 +229,7 @@ class Settings_Helper {
 			'use_custom_from_email'        => 'default_email',
 			'from-email'                   => '',
 			'from-display-name'            => '',
+			'events-view-per-page'         => 30,
 		);
 
 		return ( 'all' === $setting_key ) ? $defaults : $defaults[ $setting_key ];
@@ -546,7 +562,7 @@ class Settings_Helper {
 				$current_value = $next_scan_time;
 			} else {
 				$current_value = esc_html__( 'Not scheduled', 'website-file-changes-monitor' );
-			}			
+			}
 		}
 
 		return $current_value;
@@ -564,32 +580,32 @@ class Settings_Helper {
 	public static function sanitize_search_input( $filename ) {
 		$filename_raw = $filename;
 		$filename     = remove_accents( $filename );
-	
+
 		$special_chars = array( '?', '[', ']', '\\', '=', '<', '>', ':', ';', ',', "'", '"', '&', '$', '#', '*', '(', ')', '|', '~', '`', '!', '{', '}', '%', '+', '’', '«', '»', '”', '“', chr( 0 ) );
-	
+
 		// Check for support for utf8 in the installed PCRE library once and store the result in a static.
 		static $utf8_pcre = null;
 		if ( ! isset( $utf8_pcre ) ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			$utf8_pcre = @preg_match( '/^./u', 'a' );
 		}
-	
+
 		if ( ! seems_utf8( $filename ) ) {
 			$_ext     = pathinfo( $filename, PATHINFO_EXTENSION );
 			$_name    = pathinfo( $filename, PATHINFO_FILENAME );
 			$filename = sanitize_title_with_dashes( $_name ) . '.' . $_ext;
 		}
-	
+
 		if ( $utf8_pcre ) {
 			$filename = preg_replace( "#\x{00a0}#siu", ' ', $filename );
 		}
-	
+
 		$filename = str_replace( $special_chars, '', $filename );
 		$filename = str_replace( array( '%20', '+' ), '-', $filename );
 		$filename = preg_replace( '/\.{2,}/', '.', $filename );
 		$filename = preg_replace( '/[\r\n\t -]+/', '-', $filename );
 		$filename = trim( $filename, '.-_' );
-	
+
 		if ( ! str_contains( $filename, '.' ) ) {
 			$mime_types = wp_get_mime_types();
 			$filetype   = wp_check_filetype( 'test.' . $filename, $mime_types );
@@ -597,27 +613,27 @@ class Settings_Helper {
 				$filename = 'unnamed-file.' . $filetype['ext'];
 			}
 		}
-	
+
 		// Split the filename into a base and extension[s].
 		$parts = explode( '.', $filename );
-	
+
 		// Return if only one extension.
 		if ( count( $parts ) <= 2 ) {
 			return $filename;
 		}
-	
+
 		// Process multiple extensions.
 		$filename  = array_shift( $parts );
 		$extension = array_pop( $parts );
 		$mimes     = get_allowed_mime_types();
-	
+
 		/*
 		 * Loop over any intermediate extensions. Postfix them with a trailing underscore
 		 * if they are a 2 - 5 character long alpha string not in the allowed extension list.
 		 */
 		foreach ( (array) $parts as $part ) {
 			$filename .= '.' . $part;
-	
+
 			if ( preg_match( '/^[a-zA-Z]{2,5}\d?$/', $part ) ) {
 				$allowed = false;
 				foreach ( $mimes as $ext_preg => $mime_match ) {
@@ -632,9 +648,36 @@ class Settings_Helper {
 				}
 			}
 		}
-	
+
 		$filename .= '.' . $extension;
 
 		return $filename;
+	}
+
+	/**
+	 * Converts a number representing a day of the week into a string for it.
+	 *
+	 * NOTE: 1 = Monday, 7 = Sunday but is zero corrected by subtracting 1.
+	 *
+	 * @param  int $day_num a day number.
+	 *
+	 * @return string
+	 *
+	 * @since 2.0.0
+	 */
+	public static function convert_to_day_string( $day_num ) {
+		// Scan days option.
+		$day_key   = (int) $day_num - 1;
+		$scan_days = array(
+			'Monday',
+			'Tuesday',
+			'Wednesday',
+			'Thursday',
+			'Friday',
+			'Saturday',
+			'Sunday',
+		);
+		// Return a day string - uses day 1 = Monday by default.
+		return ( isset( $scan_days[ $day_key ] ) ) ? $scan_days[ $day_key ] : $scan_days[1];
 	}
 }

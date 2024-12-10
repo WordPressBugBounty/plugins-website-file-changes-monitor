@@ -235,7 +235,7 @@ class Cron_Handler {
 				// weekly runs on a given day each week at a given hour.
 				$hour    = (int) Settings_Helper::get_setting( 'scan-hour' );
 				$day_num = (int) Settings_Helper::get_setting( 'scan-day' );
-				$day     = self::convert_to_day_string( $day_num );
+				$day     = Settings_Helper::convert_to_day_string( $day_num );
 
 				$next_time = strtotime( $day . ' ' . $hour . ':00 ' . ' ' . $local_timezone ); // phpcs:ignore Generic.Strings.UnnecessaryStringConcat.Found
 				// if that day has passed this week already then add 1 week.
@@ -251,32 +251,7 @@ class Cron_Handler {
 		return ( false === $time ) ? time() : $time;
 	}
 
-	/**
-	 * Converts a number representing a day of the week into a string for it.
-	 *
-	 * NOTE: 1 = Monday, 7 = Sunday but is zero corrected by subtracting 1.
-	 *
-	 * @param  int $day_num a day number.
-	 *
-	 * @return string
-	 *
-	 * @since 2.0.0
-	 */
-	private static function convert_to_day_string( $day_num ) {
-		// Scan days option.
-		$day_key   = (int) $day_num - 1;
-		$scan_days = array(
-			'Monday',
-			'Tuesday',
-			'Wednesday',
-			'Thursday',
-			'Friday',
-			'Saturday',
-			'Sunday',
-		);
-		// Return a day string - uses day 1 = Monday by default.
-		return ( isset( $scan_days[ $day_key ] ) ) ? $scan_days[ $day_key ] : $scan_days[1];
-	}
+
 
 	/**
 	 * Add time intervals for scheduling.
@@ -320,6 +295,6 @@ class Cron_Handler {
 	 * @since 2.0.0
 	 */
 	public static function scan_file_changes() {
-		\MFM::start_directory_runner();
+		\MFM::start_directory_runner( wp_create_nonce( MFM_PREFIX . 'start_scan_nonce' ) );
 	}
 }
