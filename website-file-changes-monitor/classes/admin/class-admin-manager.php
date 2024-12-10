@@ -85,7 +85,7 @@ class Admin_Manager {
 	 * @since 2.0.0
 	 */
 	public static function activation_redirect() {
-		if ( is_admin() && get_site_option( MFM_PREFIX . 'redirect_after_activation', false ) ) {
+		if ( is_admin() && get_site_option( MFM_PREFIX . 'redirect_after_activation', false ) && ! get_site_option( MFM_PREFIX . 'active_version', false ) ) {
 			delete_site_option( MFM_PREFIX . 'redirect_after_activation' );
 			$admin_url = is_multisite() ? network_admin_url( 'admin.php?page=file-monitor-admin' ) : admin_url( 'admin.php?page=file-monitor-admin' );
 			wp_safe_redirect( esc_url( $admin_url ) );

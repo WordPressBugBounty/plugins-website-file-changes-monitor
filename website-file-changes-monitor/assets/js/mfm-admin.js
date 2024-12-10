@@ -426,7 +426,7 @@ jQuery(document).ready(function() {
 		jQuery('body').on('click', '.mfm-run-event-search', function(e) {
 			e.preventDefault();
 			var searchString = jQuery( '[data-mfm-event-search-input]' ).val();
-			var eventNonce = jQuery( '[data-nonce]' ).attr( 'data-nonce' );
+			var eventNonce = jQuery( '.mfm-run-event-search[data-nonce]' ).attr( 'data-nonce' );
 
 			if ( ! searchString ) {
 				jQuery( '[data-mfm-event-search-input]' ).css( 'border-color', 'red' );

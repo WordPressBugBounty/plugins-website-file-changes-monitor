@@ -125,6 +125,7 @@ class DB_Handler {
                 id mediumint(9) NOT NULL AUTO_INCREMENT,
                 path TEXT NOT NULL,
                 time TEXT NOT NULL,
+                permissions TEXT NOT NULL,
                 PRIMARY KEY (id)
             ) $charset_collate;";
 
@@ -142,6 +143,7 @@ class DB_Handler {
                 file_paths TEXT NOT NULL,
                 file_hashes TEXT NOT NULL,
                 file_timestamps TEXT NOT NULL,
+                file_permissions TEXT NOT NULL,
                 data_hash TEXT NOT NULL,
                 time TEXT NOT NULL,
                 PRIMARY KEY (id)
@@ -184,11 +186,11 @@ class DB_Handler {
 		dbDelta( $sql );
 
 		// Create new perms column.
-		if ( ! get_site_option( MFM_PREFIX . 'permissions_column_created' ) ) {
-			self::create_permissions_column();
-		}
+		self::create_permissions_column();
 
-		update_site_option( MFM_PREFIX . 'initial_setup_needed', true );
+		if ( ! get_site_option( MFM_PREFIX . 'last_scan_time', false ) ) {
+			update_site_option( MFM_PREFIX . 'initial_setup_needed', true );
+		}
 	}
 
 	/**
@@ -204,8 +206,10 @@ class DB_Handler {
 		self::drop_table( self::$stored_directories_table_name );
 		self::drop_table( self::$stored_files_table_name );
 
-		$wpdb->query( $wpdb->prepare( 'CREATE TABLE %1s SELECT * FROM %2s', $wpdb->prefix . self::$stored_files_table_name, $wpdb->prefix . self::$scanned_files_table_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
-		$wpdb->query( $wpdb->prepare( 'CREATE TABLE %1s SELECT * FROM %2s', $wpdb->prefix . self::$stored_directories_table_name, $wpdb->prefix . self::$scanned_directories_table_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$wpdb->query( $wpdb->prepare( 'CREATE TABLE %1s %2s (SELECT * FROM %3s)', $wpdb->prefix . self::$stored_files_table_name, $charset_collate, $wpdb->prefix . self::$scanned_files_table_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+		$wpdb->query( $wpdb->prepare( 'CREATE TABLE %1s %2s (SELECT * FROM %3s)', $wpdb->prefix . self::$stored_directories_table_name, $charset_collate, $wpdb->prefix . self::$scanned_directories_table_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
 	}
 
 	/**
@@ -908,13 +912,15 @@ class DB_Handler {
 			$sql .= $wpdb->prepare( ' LIMIT %d OFFSET %d', $limit, $offset );
 		}
 
-		$events_cache = wp_cache_get( MFM_PREFIX . 'events_cache' );
-		if ( ! $events_cache ) {
-			$events = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
-			wp_cache_set( MFM_PREFIX . 'events_cache', $events, '', HOUR_IN_SECONDS );
-		} else {
-			$events = $events_cache;
-		}
+		// $events_cache = wp_cache_get( MFM_PREFIX . 'events_cache' );
+		// if ( ! $events_cache || empty( $events_cache ) ) {
+		// 	$events = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+		// 	wp_cache_set( MFM_PREFIX . 'events_cache', $events, '', HOUR_IN_SECONDS );
+		// } else {
+		// 	$events = $events_cache;
+		// }
+
+		$events = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
 
 		return ( $return_count ) ? count( $events ) : $events;
 	}
@@ -1338,33 +1344,28 @@ class DB_Handler {
 		$scanned_directories_table_name = $wpdb->prefix . self::$scanned_directories_table_name;
 		$stored_directories_table_name  = $wpdb->prefix . self::$stored_directories_table_name;
 
-		if ( ! self::check_table_exists( $scanned_files_table_name ) || ! self::check_table_exists( $stored_files_table_name ) || ! self::check_table_exists( $scanned_directories_table_name ) || ! self::check_table_exists( $stored_directories_table_name ) ) {
-			return;
+		if ( ! function_exists( '\maybe_add_column' ) ) {
+			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 		}
 
-		$scanned_files = $wpdb->get_row( "SELECT * FROM $scanned_files_table_name" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.NoCaching
-
-		if ( ! isset( $scanned_files->file_permissions ) ) {
-			$wpdb->query( "ALTER TABLE $scanned_files_table_name ADD file_permissions TEXT NOT NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.NoCaching
-
+		if ( self::check_table_exists( $scanned_files_table_name ) ) {
+			$create_ddl = "ALTER TABLE $scanned_files_table_name ADD file_permissions TEXT NOT NULL";
+			\maybe_add_column( $scanned_files_table_name, 'file_permissions', $create_ddl );
+		}
+		
+		if ( self::check_table_exists( $stored_files_table_name ) ) {
+			$create_ddl = "ALTER TABLE $stored_files_table_name ADD file_permissions TEXT NOT NULL";
+			\maybe_add_column( $stored_files_table_name, 'file_permissions', $create_ddl );
 		}
 
-		$stored_files = $wpdb->get_row( "SELECT * FROM $stored_files_table_name" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.NoCaching
-
-		if ( ! isset( $stored_files->file_permissions ) ) {
-			$wpdb->query( "ALTER TABLE $stored_files_table_name ADD file_permissions TEXT NOT NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.NoCaching
+		if ( self::check_table_exists( $scanned_directories_table_name ) ) {
+			$create_ddl = "ALTER TABLE $scanned_directories_table_name ADD permissions TEXT NOT NULL";
+			\maybe_add_column( $scanned_directories_table_name, 'permissions', $create_ddl );
 		}
 
-		$scanned_directories = $wpdb->get_row( "SELECT * FROM $scanned_directories_table_name" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.NoCaching
-
-		if ( ! isset( $scanned_directories->file_permissions ) ) {
-			$wpdb->query( "ALTER TABLE $scanned_directories_table_name ADD permissions TEXT NOT NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.NoCaching
-		}
-
-		$stored_directories = $wpdb->get_row( "SELECT * FROM $stored_directories_table_name" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.NoCaching
-
-		if ( ! isset( $stored_directories->file_permissions ) ) {
-			$wpdb->query( "ALTER TABLE $stored_directories_table_name ADD permissions TEXT NOT NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.NoCaching
+		if ( self::check_table_exists( $stored_directories_table_name ) ) {
+			$create_ddl = "ALTER TABLE $stored_directories_table_name ADD permissions TEXT NOT NULL";
+			\maybe_add_column( $stored_directories_table_name, 'permissions', $create_ddl );
 		}
 
 		update_site_option( MFM_PREFIX . 'permissions_column_created', true );
