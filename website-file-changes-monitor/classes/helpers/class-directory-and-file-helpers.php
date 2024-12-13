@@ -112,10 +112,9 @@ class Directory_And_File_Helpers {
 					}
 
 					// save file name with path.
-					$file_data['paths'][]       = str_replace( ABSPATH, '', $path );
-					$file_data['hashs'][]       = md5_file( $path );
-					$file_data['timestamps'][]  = filemtime( $path );
-					$file_data['permissions'][] = substr( sprintf( "%o", fileperms( $path ) ), -4 );
+					$file_data['paths'][]      = str_replace( ABSPATH, '', $path );
+					$file_data['hashs'][]      = md5_file( $path );
+					$file_data['timestamps'][] = filemtime( $path );
 
 				}
 			}

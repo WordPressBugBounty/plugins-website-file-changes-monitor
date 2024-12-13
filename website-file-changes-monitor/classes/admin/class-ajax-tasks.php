@@ -42,7 +42,7 @@ class AJAX_Tasks {
 		}
 		$nonce = isset( $_POST['nonce'] ) ? sanitize_key( wp_unslash( $_POST['nonce'] ) ) : '';
 
-		if ( ! $is_internal_command ) {
+		if ( ! $is_internal_command ) {			
 			if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, MFM_PREFIX . 'purge_data_nonce' ) ) {
 				wp_send_json_error( array( 'message' => __( 'Failed nonce check', 'website-file-changes-monitor' ) ) );
 				return;
@@ -50,8 +50,6 @@ class AJAX_Tasks {
 		} else {
 			$nonce = wp_create_nonce( MFM_PREFIX . 'purge_data_nonce' );
 		}
-
-		do_action( MFM_PREFIX . 'setting_purged' );
 
 		DB_Handler::do_data_purge( $nonce );
 
@@ -309,7 +307,7 @@ class AJAX_Tasks {
 	public static function clean_wizard_settings( $inccoming_array ) {
 		$output_array = array();
 		foreach ( $inccoming_array as $item ) {
-			if ( 'false' === $item ) {
+			if ( 'false' === $item  ) {
 				continue;
 			}
 			$output_array[] = $item;

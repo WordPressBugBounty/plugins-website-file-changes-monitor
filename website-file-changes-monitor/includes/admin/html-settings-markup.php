@@ -500,11 +500,6 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 								<input type="checkbox" name="mfm-settings[enabled-notifications][]" value="modified" <?php echo in_array( 'modified', $mfm_settings['enabled-notifications'], true ) ? 'checked' : false; ?>>
 								<span><?php esc_html_e( 'Modified', 'website-file-changes-monitor' ); ?></span>
 							</label>
-							<br>
-							<label for="permissions_changed">
-								<input type="checkbox" name="mfm-settings[enabled-notifications][]" value="permissions_changed" <?php echo in_array( 'permissions_changed', $mfm_settings['enabled-notifications'], true ) ? 'checked' : false; ?>>
-								<span><?php esc_html_e( 'Permissions modified', 'website-file-changes-monitor' ); ?></span>
-							</label>
 						</fieldset>
 					</td>
 				</tr>
@@ -527,7 +522,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 								<label for="email-notice-custom">
 									<input type="radio" id="email-notice-custom" name="mfm-settings[email_notice_type]" value="custom"<?php echo ( 'custom' === $email_notice_type ) ? ' checked' : ''; ?>>
 									<span><?php esc_html_e( 'Use a different email:', 'website-file-changes-monitor' ); ?></span>
-									<input type="email" id="notice-email-address" name="mfm-settings[custom_email_address]" multiple value="<?php echo esc_attr( $mfm_settings['custom_email_address'] ); ?>" placeholder="<?php esc_html_e( 'Enter email', 'website-file-changes-monitor' ); ?>">
+									<input type="email" id="notice-email-address" name="mfm-settings[custom_email_address]" value="<?php echo esc_attr( $mfm_settings['custom_email_address'] ); ?>" placeholder="<?php esc_html_e( 'Enter email', 'website-file-changes-monitor' ); ?>">
 								</label>
 								<br />
 								<br />

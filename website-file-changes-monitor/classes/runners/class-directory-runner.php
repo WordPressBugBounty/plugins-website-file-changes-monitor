@@ -76,7 +76,7 @@ class Directory_Runner extends \WP_Background_Process {
 		);
 
 		if ( $incoming_item ) {
-			MFM_Fast_Cache::add_to_cache( "('" . $incoming_item . "', '" . current_time( 'timestamp' ) . "', '" . substr( sprintf( "%o", fileperms( $incoming_item ) ), -4 ) . "')" ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
+			MFM_Fast_Cache::add_to_cache( "('" . $incoming_item . "', '" . current_time( 'timestamp' ) . "')" ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 		}
 
 		return false;

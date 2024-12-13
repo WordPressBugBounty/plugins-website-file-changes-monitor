@@ -117,13 +117,6 @@ class MFM {
 
 		// MFM crons.
 		Cron_Handler::load_crons_handler();
-
-		add_action( 'admin_init', array( '\MFM\Admin\Admin_Manager', 'check_plugin_update' ) );
-
-		// Create new perms column.
-		if ( ! get_site_option( MFM_PREFIX . 'permissions_column_created' ) ) {
-			DB_Handler::create_permissions_column();
-		}
 	}
 
 	/**
@@ -153,29 +146,12 @@ class MFM {
 
 	/**
 	 * Start the scan process off as a whole.
-	 * 
-	 * @param string $nonce - Nonce, if from cron.
 	 *
 	 * @return void
 	 *
 	 * @since 2.0.0
 	 */
-	public static function start_directory_runner( $nonce = false ) {
-		$post_nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : $nonce;
-
-		// If we dont have anything by now, OR if what we do have fails, bail.
-		if ( ! $post_nonce || ! wp_verify_nonce( $post_nonce, MFM_PREFIX . 'start_scan_nonce' ) ) {
-			return;
-		}
-		
-		// If we have nonce but not perms, bail.
-		if ( ! current_user_can( 'manage_options' ) ) {
-			$is_cron = ( defined( 'DOING_CRON' ) && DOING_CRON );
-			// If current request was triggered via cron, allow - otherwise, no thanks.
-			if ( ! $is_cron ) {
-				return;
-			}			
-		}
+	public static function start_directory_runner() {
 
 		wp_cache_delete( MFM_PREFIX . 'events_cache' );
 
@@ -228,11 +204,9 @@ class MFM {
 		$base = apply_filters( MFM_PREFIX . 'append_dir_to_scan', $base );
 
 		foreach ( $base as $base_item ) {
-			$perms = substr( sprintf( '%o', fileperms( $base_item ) ), -4 );
-			$data  = array(
-				'path'        => $base_item,
-				'time'        => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
-				'permissions' => $perms,
+			$data = array(
+				'path' => $base_item,
+				'time' => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 			);
 			DB_Handler::insert_data( DB_Handler::$scanned_directories_table_name, $data );
 			$items = Directory_And_File_Helpers::get_directories_from_path( $base_item );

@@ -105,6 +105,7 @@ jQuery(document).ready(function() {
 				var currentStepID = jQuery( '[data-wizard-step="'+ stepNo +'"]').attr('id');
 
 				if ( 'mfm-wizard-notification' == currentStepID ) {
+					console.log( jQuery('[name="mfm-settings[email_notice_type]"]:checked').val() );
 					if ( 'custom' == jQuery('[name="mfm-settings[email_notice_type]"]:checked').val() ) {
 						if ( ! jQuery('#notice-email-address').val() ) {
 							jQuery('#notice-email-address').css( 'border-color', 'red' );
@@ -263,8 +264,6 @@ jQuery(document).ready(function() {
 			jQuery( '#run_tool' ).attr( 'value',  mfmJSData.scanInProgressLabel ).addClass( 'disabled' );
 
 			var formData = jQuery("#mfm-file-scanning-controls").serializeArray();
-			var eventNonce = jQuery('#run_tool').attr('data-nonce');
-			
 			jQuery('#data-readout').text( 'File Scan Initialising ' + mfmJSData.youMayContinue);
 			jQuery('#mfm_status_monitor_bar').slideDown(300);
 			jQuery('body').addClass('mfm-scan-init');
@@ -275,7 +274,6 @@ jQuery(document).ready(function() {
 				data: {
 					action: 'mfm_start_directory_runner',
 					form_data: formData,
-					nonce: eventNonce,
 				},
 				complete: function(data) {
 					mainTimer = setInterval(monitorScanStatus, 10000)
@@ -426,7 +424,7 @@ jQuery(document).ready(function() {
 		jQuery('body').on('click', '.mfm-run-event-search', function(e) {
 			e.preventDefault();
 			var searchString = jQuery( '[data-mfm-event-search-input]' ).val();
-			var eventNonce = jQuery( '.mfm-run-event-search[data-nonce]' ).attr( 'data-nonce' );
+			var eventNonce = jQuery( '[data-nonce]' ).attr( 'data-nonce' );
 
 			if ( ! searchString ) {
 				jQuery( '[data-mfm-event-search-input]' ).css( 'border-color', 'red' );

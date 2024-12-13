@@ -36,42 +36,35 @@ class Events_Helper {
 	public static function create_event_type_label( $types, $current_view = 'all', $return_instead_of_echo = false ) {
 
 		$event_labels = array(
-			'file-scan-started'                    => __( 'File scan started ', 'website-file-changes-monitor' ),
-			'core-file-modified'                   => __( 'Core file modified ', 'website-file-changes-monitor' ),
-			'core-file-renamed'                    => __( 'Core file renamed ', 'website-file-changes-monitor' ),
-			'core-file-permissions-changed'        => __( 'Core file permissions modified', 'website-file-changes-monitor' ),
-			'core-directory-permissions-changed'   => __( 'Core directory permissions modified', 'website-file-changes-monitor' ),
-			'core-file-added'                      => __( 'Core file added ', 'website-file-changes-monitor' ),
-			'core-file-removed'                    => __( 'Core file removed ', 'website-file-changes-monitor' ),
-			'core-directory-added'                 => __( 'Core Directory added ', 'website-file-changes-monitor' ),
-			'core-directory-modified'              => __( 'Core Directory modified ', 'website-file-changes-monitor' ),
-			'core-directory-removed'               => __( 'Core Directory removed ', 'website-file-changes-monitor' ),
-			'file-scan-complete'                   => __( 'File scan complete ', 'website-file-changes-monitor' ),
-			'file-scan-aborted'                    => __( 'File scan aborted ', 'website-file-changes-monitor' ),
-			'other-file-added'                     => __( 'File(s) added ', 'website-file-changes-monitor' ),
-			'other-file-modified'                  => __( 'File(s) modified ', 'website-file-changes-monitor' ),
-			'other-file-removed'                   => __( 'File(s) removed ', 'website-file-changes-monitor' ),
-			'other-file-renamed'                   => __( 'File(s) renamed ', 'website-file-changes-monitor' ),
-			'other-file-permissions-changed'       => __( 'Other file permissions modified', 'website-file-changes-monitor' ),
-			'other-directory-permissions-changed'  => __( 'Other directory permissions modified', 'website-file-changes-monitor' ),
-			'other-directory-added'                => __( 'Directory added ', 'website-file-changes-monitor' ),
-			'other-directory-modified'             => __( 'Directory modified ', 'website-file-changes-monitor' ),
-			'other-directory-removed'              => __( 'Directory removed ', 'website-file-changes-monitor' ),
-			'plugin-file-added'                    => __( 'Plugin file(s) added ', 'website-file-changes-monitor' ),
-			'plugin-file-modified'                 => __( 'Plugin file(s) modified ', 'website-file-changes-monitor' ),
-			'plugin-file-renamed'                  => __( 'Plugin file(s) renamed ', 'website-file-changes-monitor' ),
-			'plugin-file-permissions-changed'      => __( 'Plugin file permissions modified', 'website-file-changes-monitor' ),
-			'plugin-directory-permissions-changed' => __( 'Plugin directory permissions modified', 'website-file-changes-monitor' ),
-			'plugin-directory-removed'             => __( 'Plugin removed ', 'website-file-changes-monitor' ),
-			'plugin-directory-added'               => __( 'Plugin added ', 'website-file-changes-monitor' ),
-			'plugin-updated'                       => __( 'Plugin updated ', 'website-file-changes-monitor' ),
-			'theme-file-added'                     => __( 'Theme file(s) added ', 'website-file-changes-monitor' ),
-			'theme-file-modified'                  => __( 'Theme file(s) modified ', 'website-file-changes-monitor' ),
-			'theme-file-renamed'                   => __( 'Theme file(s) renamed ', 'website-file-changes-monitor' ),
-			'theme-directory-permissions-changed'  => __( 'Theme directory permissions modified', 'website-file-changes-monitor' ),
-			'theme-directory-removed'              => __( 'Theme removed ', 'website-file-changes-monitor' ),
-			'theme-directory-added'                => __( 'Theme added ', 'website-file-changes-monitor' ),
-			'theme-updated'                        => __( 'Theme updated ', 'website-file-changes-monitor' ),
+			'file-scan-started'        => __( 'File scan started ', 'website-file-changes-monitor' ),
+			'core-file-modified'       => __( 'Core file modified ', 'website-file-changes-monitor' ),
+			'core-file-renamed'        => __( 'Core file renamed ', 'website-file-changes-monitor' ),
+			'core-file-added'          => __( 'Core file added ', 'website-file-changes-monitor' ),
+			'core-file-removed'        => __( 'Core file removed ', 'website-file-changes-monitor' ),
+			'core-directory-added'     => __( 'Core Directory added ', 'website-file-changes-monitor' ),
+			'core-directory-modified'  => __( 'Core Directory modified ', 'website-file-changes-monitor' ),
+			'core-directory-removed'   => __( 'Core Directory removed ', 'website-file-changes-monitor' ),
+			'file-scan-complete'       => __( 'File scan complete ', 'website-file-changes-monitor' ),
+			'file-scan-aborted'        => __( 'File scan aborted ', 'website-file-changes-monitor' ),
+			'other-file-added'         => __( 'File(s) added ', 'website-file-changes-monitor' ),
+			'other-file-modified'      => __( 'File(s) modified ', 'website-file-changes-monitor' ),
+			'other-file-removed'       => __( 'File(s) removed ', 'website-file-changes-monitor' ),
+			'other-file-renamed'       => __( 'File(s) renamed ', 'website-file-changes-monitor' ),
+			'other-directory-added'    => __( 'Directory added ', 'website-file-changes-monitor' ),
+			'other-directory-modified' => __( 'Directory modified ', 'website-file-changes-monitor' ),
+			'other-directory-removed'  => __( 'Directory removed ', 'website-file-changes-monitor' ),
+			'plugin-file-added'        => __( 'Plugin file(s) added ', 'website-file-changes-monitor' ),
+			'plugin-file-modified'     => __( 'Plugin file(s) modified ', 'website-file-changes-monitor' ),
+			'plugin-file-renamed'      => __( 'Plugin file(s) renamed ', 'website-file-changes-monitor' ),
+			'plugin-directory-removed' => __( 'Plugin removed ', 'website-file-changes-monitor' ),
+			'plugin-directory-added'   => __( 'Plugin added ', 'website-file-changes-monitor' ),
+			'plugin-updated'           => __( 'Plugin updated ', 'website-file-changes-monitor' ),
+			'theme-file-added'         => __( 'Theme file(s) added ', 'website-file-changes-monitor' ),
+			'theme-file-modified'      => __( 'Theme file(s) modified ', 'website-file-changes-monitor' ),
+			'theme-file-renamed'       => __( 'Theme file(s) renamed ', 'website-file-changes-monitor' ),
+			'theme-directory-removed'  => __( 'Theme removed ', 'website-file-changes-monitor' ),
+			'theme-directory-added'    => __( 'Theme added ', 'website-file-changes-monitor' ),
+			'theme-updated'            => __( 'Theme updated ', 'website-file-changes-monitor' ),
 		);
 
 		$label = $types;
@@ -156,12 +149,6 @@ class Events_Helper {
 
 			if ( is_array( $file_array ) && ! empty( $file_array ) ) {
 				$expand_string = '';
-				if ( isset( $file_array['permissions_changed'] ) ) {
-					if ( ! empty( $file_array['permissions_changed'] ) ) {
-						$count          = ( count( $file_array['permissions_changed'] ) > 500 ) ? '500+' : count( $file_array['permissions_changed'] );
-						$expand_string .= $count . ' ' . esc_html__( 'permissions changed', 'website-file-changes-monitor' );
-					}
-				}
 				if ( isset( $file_array['modified'] ) ) {
 					if ( ! empty( $file_array['modified'] ) ) {
 						$count          = ( count( $file_array['modified'] ) > 500 ) ? '500+' : count( $file_array['modified'] );
@@ -213,7 +200,7 @@ class Events_Helper {
 								}
 							}
 							?>
-								<span class="mfm-list-item <?php echo esc_attr( $item_class ); ?>"><?php echo esc_html__( 'File', 'website-file-changes-monitor' ); ?> <?php echo esc_attr( ucfirst( str_replace( '_', ' ', $change_type ) ) ); ?>: <?php echo wp_kses_post( str_replace( ABSPATH, '', $file ) ); ?> <div class="mfm_file_actions_panel"><a href="#" data-mfm-update-setting data-exclude-file="<?php echo esc_attr( $file ); ?>" class="hint--left" aria-label="Ignore file from future scans"><span class="dashicons dashicons-insert"></span></a></div></span>
+								<span class="mfm-list-item <?php echo esc_attr( $item_class ); ?>"><?php echo esc_html__( 'File', 'website-file-changes-monitor' ); ?> <?php echo esc_attr( ucfirst( $change_type ) ); ?>: <?php echo esc_attr( str_replace( ABSPATH, '', $file ) ); ?> <div class="mfm_file_actions_panel"><a href="#" data-mfm-update-setting data-exclude-file="<?php echo esc_attr( $file ); ?>" class="hint--left" aria-label="Ignore file from future scans"><span class="dashicons dashicons-insert"></span></a></div></span>
 							<?php
 						}
 					}
@@ -223,11 +210,7 @@ class Events_Helper {
 					<span data-empty-dir-wrapper><?php echo esc_html__( 'Empty directory', 'website-file-changes-monitor' ); ?></span>
 				<?php
 			} else {
-				?>
-				<span class="mfm-list-item">
-					<?php echo wp_kses_post( $file_array ); ?>
-				</span>
-				<?php
+				echo wp_kses_post( $file_array );
 			}
 		}
 	}

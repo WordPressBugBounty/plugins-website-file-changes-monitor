@@ -6,7 +6,7 @@ License URI: https://www.gnu.org/licenses/gpl.html
 Tags: security, file monitor, file integrity scanner, file security, file changes
 Requires at least: 5.0
 Tested up to: 6.7.0
-Stable tag: 2.2.1
+Stable tag: 2.1.1
 Requires PHP: 8.0
 
 Get alerted via email of file changes on your WordPress sites. No false positives!
@@ -161,13 +161,15 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Changelog ==
 
-= 2.2.1 (2024-12-10) =
+= 2.1.1 (2024-10-21) =
 
- * **Bug fixes**
-	 
-	 * Resolved an issue where pagination settings were not correctly loading content per page.
-	 * Addressed a malfunction in the search functionality.
-	 * Fixed edge case errors occurring on installations during fingerprint scans on a multisite network.
-	 * Resolved a bug that triggered the plugin setup wizard upon deactivation and reactivation of the plugin, even after being configured.
+ * **Plugin improvements**
+	 * Added more checks and user input sanitization in the plugin.
 
-Refer to the complete [plugin changelog](https://melapress.com/support/kb/website-file-changes-monitor-plugin-changelog/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm) for more detailed information about what was new, improved and fixed in previous version updates of Melapress File Monitor.
+ * **Security fix**
+	 * Fixed a SQL injection in the Search placeholder.
+
+* **Big fixes**
+	 * Fixed a failed nonce issue when searching for some speicfic strings.
+	 * Fixed: New added plugin or files via the media module not reported in plugin.
+

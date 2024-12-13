@@ -60,10 +60,6 @@ class Admin_Manager {
 		add_action( $menu_action, array( __CLASS__, 'add_events_count' ), 100 );
 		add_filter( 'plugin_action_links_' . MFM_BASE_NAME, array( __CLASS__, 'shortcut_links' ), 10, 1 );
 		add_action( 'admin_init', array( __CLASS__, 'activation_redirect' ) );
-
-		add_action( 'admin_notices', array( __CLASS__, 'plugin_was_updated_banner' ), 10, 3 );
-		add_action( 'network_admin_notices', array( __CLASS__, 'plugin_was_updated_banner' ), 10, 3 );
-		add_action( 'wp_ajax_dismiss_mfm_update_notice', array( __CLASS__, 'dismiss_update_notice' ) );
 	}
 
 	/**
@@ -85,7 +81,7 @@ class Admin_Manager {
 	 * @since 2.0.0
 	 */
 	public static function activation_redirect() {
-		if ( is_admin() && get_site_option( MFM_PREFIX . 'redirect_after_activation', false ) && ! get_site_option( MFM_PREFIX . 'active_version', false ) ) {
+		if ( is_admin() && get_site_option( MFM_PREFIX . 'redirect_after_activation', false ) ) {
 			delete_site_option( MFM_PREFIX . 'redirect_after_activation' );
 			$admin_url = is_multisite() ? network_admin_url( 'admin.php?page=file-monitor-admin' ) : admin_url( 'admin.php?page=file-monitor-admin' );
 			wp_safe_redirect( esc_url( $admin_url ) );
@@ -103,58 +99,54 @@ class Admin_Manager {
 	 * @since 2.0.0
 	 */
 	public static function load_scripts( $admin_page_slug ) {
-		wp_register_style( 'mfm-admin-global-css', MFM_WP_URL . 'assets/css/mfm-admin-global-css.css', false, '1.0.0' );
-		wp_enqueue_style( 'mfm-admin-global-css' );
-
-		$screen = get_current_screen();
-
 		$our_slugs = array(
 			'toplevel_page_file-monitor-admin',
-			'toplevel_page_file-monitor-admin-network',
+			'file-monitoring_page_file-monitor-settings',
+			'file-monitoring_page_file-monitor-help',
 		);
 
-		$is_sub_slug = str_contains( $screen->base, 'file-monitoring' );
-
-		if ( in_array( $screen->base, $our_slugs, true ) || $is_sub_slug  ) {
-			$data_array = array(
-				'ajaxURL'                   => admin_url( 'admin-ajax.php' ),
-				'adminEmail'                => get_bloginfo( 'admin_email' ),
-				'excluded_directory_markup' => '<span><input type="checkbox" name="mfm-settings[excluded_directories][]" id="" value="" checked=""><label for=""></label></span><br>',
-				'ignored_directory_markup'  => '<span><input type="checkbox" name="mfm-settings[ignored_directories][]" id="" value="" checked=""><label for=""></label></span><br>',
-				'file_display_markup'       => '<span>File <span data-change-type-holder></span>: <span data-file-path-holder></span> <div class="mfm_file_actions_panel"><a href="#" data-mfm-update-setting class="hint--left" aria-label="Ignore file from future  scans"><span class="dashicons dashicons-insert"></span></a></div> <span class="mfm-action-spinner"><div class="icon-spin"><span class="dashicons dashicons-admin-generic"></span></div></span></span>',
-				'status_route'              => get_rest_url( null, 'mfm-scan-status/get-status' ),
-				'fileInvalid'               => esc_html__( 'Filename cannot be added because it contains invalid characters.', 'website-file-changes-monitor' ),
-				'extensionInvalid'          => esc_html__( 'File extension cannot be added because it contains invalid characters.', 'website-file-changes-monitor' ),
-				'dirInvalid'                => esc_html__( 'Directory cannot be added because it contains invalid characters.', 'website-file-changes-monitor' ),
-				'valueAlreadyExists'        => esc_html__( 'Cannot be added as value is already found.', 'website-file-changes-monitor' ),
-				'dirAlreadyExcluded'        => esc_html__( 'Directory is currently marked as excluded, please remove from the exclusion list and re-save to continue.', 'website-file-changes-monitor' ),
-				'evenmoreItems'             => esc_html__( 'further changes found.', 'website-file-changes-monitor' ),
-				'continueLoading'           => esc_html__( 'Continue loading changes.', 'website-file-changes-monitor' ),
-				'youMayContinue'            => esc_html__( '- You may navigate away from this page at anytime.', 'website-file-changes-monitor' ),
-				'basepath'                  => ABSPATH,
-				'eventPageURL'              => is_multisite() ? network_admin_url( 'admin.php?page=file-monitor-admin' ) : admin_url( 'admin.php?page=file-monitor-admin' ),
-				'settingsPageURL'           => is_multisite() ? network_admin_url( 'admin.php?page=file-monitor-settings' ) : admin_url( 'admin.php?page=file-monitor-settings' ),
-				'wizardIntroTitle'          => esc_html__( 'Welcome to Melapress File Monitor', 'website-file-changes-monitor' ),
-				'wizardIntroText'           => esc_html__( 'Thank you for choosing our plugin. The plugin will now take you through some basic settings so you can get started with our plugin right away.', 'website-file-changes-monitor' ),
-				'prevStepLabel'             => esc_html__( 'Back', 'website-file-changes-monitor' ),
-				'nextStepLabel'             => esc_html__( 'Continue', 'website-file-changes-monitor' ),
-				'wizardOutroTitle'          => esc_html__( 'You are all set...', 'website-file-changes-monitor' ),
-				'wizardOutroText'           => esc_html__( 'You are all done and the plugins settings are saved. Click the "Complete setup & run scan" button below to lauch your first scan. The first scan will start automatically as soon as you close this wizard.', 'website-file-changes-monitor' ),
-				'scanInProgressLabel'       => esc_html__( 'Scan underway', 'website-file-changes-monitor' ),
-				'startScanLabel'            => esc_html__( 'Scan file scan', 'website-file-changes-monitor' ),
-				'clickToViewLabel'          => esc_html__( 'Click to view changes', 'website-file-changes-monitor' ),
-				'clickToHideLabel'          => esc_html__( 'Click to hide changes', 'website-file-changes-monitor' ),
-				'isWFCMDataFound'           => ! empty( get_site_option( 'wfcm_version' ) ),
-				'MFMWizardPanelMarkup'      => '<div id="mfm-wizard-old-data-found"><h3>' . esc_html__( 'Lets clear things out', 'website-file-changes-monitor' ) . '</h3><p>' . esc_html__( 'We detected data from our previous (now obsolete) WFCM plugin. As Melapress File Manager is all-new, this data will purged once the plugin guide you through the rest of the setup.', 'website-file-changes-monitor' ) . '</p></div>',
-				'expandListBelowAmount'     => 3,
-			);
-	
-			wp_enqueue_script( 'wsal-admin-js', MFM_WP_URL . 'assets/js/mfm-admin.js', array( 'jquery' ), '5.1.0', true );
-			wp_register_style( 'mfm-admin-css', MFM_WP_URL . 'assets/css/mfm-admin-css.css', false, '1.0.0' );
-			wp_enqueue_style( 'mfm-admin-css' );
-	
-			wp_localize_script( 'wsal-admin-js', 'mfmJSData', $data_array );
+		if ( ! in_array( $admin_page_slug, $our_slugs, true ) ) {
+			return;
 		}
+
+		$data_array = array(
+			'ajaxURL'                   => admin_url( 'admin-ajax.php' ),
+			'adminEmail'                => get_bloginfo( 'admin_email' ),
+			'excluded_directory_markup' => '<span><input type="checkbox" name="mfm-settings[excluded_directories][]" id="" value="" checked=""><label for=""></label></span><br>',
+			'ignored_directory_markup'  => '<span><input type="checkbox" name="mfm-settings[ignored_directories][]" id="" value="" checked=""><label for=""></label></span><br>',
+			'file_display_markup'       => '<span>File <span data-change-type-holder></span>: <span data-file-path-holder></span> <div class="mfm_file_actions_panel"><a href="#" data-mfm-update-setting class="hint--left" aria-label="Ignore file from future  scans"><span class="dashicons dashicons-insert"></span></a></div> <span class="mfm-action-spinner"><div class="icon-spin"><span class="dashicons dashicons-admin-generic"></span></div></span></span>',
+			'status_route'              => get_rest_url( null, 'mfm-scan-status/get-status' ),
+			'fileInvalid'               => esc_html__( 'Filename cannot be added because it contains invalid characters.', 'website-file-changes-monitor' ),
+			'extensionInvalid'          => esc_html__( 'File extension cannot be added because it contains invalid characters.', 'website-file-changes-monitor' ),
+			'dirInvalid'                => esc_html__( 'Directory cannot be added because it contains invalid characters.', 'website-file-changes-monitor' ),
+			'valueAlreadyExists'        => esc_html__( 'Cannot be added as value is already found.', 'website-file-changes-monitor' ),
+			'dirAlreadyExcluded'        => esc_html__( 'Directory is currently marked as excluded, please remove from the exclusion list and re-save to continue.', 'website-file-changes-monitor' ),
+			'evenmoreItems'             => esc_html__( 'further changes found.', 'website-file-changes-monitor' ),
+			'continueLoading'           => esc_html__( 'Continue loading changes.', 'website-file-changes-monitor' ),
+			'youMayContinue'            => esc_html__( '- You may navigate away from this page at anytime.', 'website-file-changes-monitor' ),
+			'basepath'                  => ABSPATH,
+			'eventPageURL'              => is_multisite() ? network_admin_url( 'admin.php?page=file-monitor-admin' ) : admin_url( 'admin.php?page=file-monitor-admin' ),
+			'settingsPageURL'           => is_multisite() ? network_admin_url( 'admin.php?page=file-monitor-settings' ) : admin_url( 'admin.php?page=file-monitor-settings' ),
+			'wizardIntroTitle'          => esc_html__( 'Welcome to Melapress File Monitor', 'website-file-changes-monitor' ),
+			'wizardIntroText'           => esc_html__( 'Thank you for choosing our plugin. The plugin will now take you through some basic settings so you can get started with our plugin right away.', 'website-file-changes-monitor' ),
+			'prevStepLabel'             => esc_html__( 'Back', 'website-file-changes-monitor' ),
+			'nextStepLabel'             => esc_html__( 'Continue', 'website-file-changes-monitor' ),
+			'wizardOutroTitle'          => esc_html__( 'You are all set...', 'website-file-changes-monitor' ),
+			'wizardOutroText'           => esc_html__( 'You are all done and the plugins settings are saved. Click the "Complete setup & run scan" button below to lauch your first scan. The first scan will start automatically as soon as you close this wizard.', 'website-file-changes-monitor' ),
+			'scanInProgressLabel'       => esc_html__( 'Scan underway', 'website-file-changes-monitor' ),
+			'startScanLabel'            => esc_html__( 'Scan file scan', 'website-file-changes-monitor' ),
+			'clickToViewLabel'          => esc_html__( 'Click to view changes', 'website-file-changes-monitor' ),
+			'clickToHideLabel'          => esc_html__( 'Click to hide changes', 'website-file-changes-monitor' ),
+			'isWFCMDataFound'           => ! empty( get_site_option( 'wfcm_version' ) ),
+			'MFMWizardPanelMarkup'      => '<div id="mfm-wizard-old-data-found"><h3>' . esc_html__( 'Lets clear things out', 'website-file-changes-monitor' ) . '</h3><p>' . esc_html__( 'We detected data from our previous (now obsolete) WFCM plugin. As Melapress File Manager is all-new, this data will purged once the plugin guide you through the rest of the setup.', 'website-file-changes-monitor' ) . '</p></div>',
+			'expandListBelowAmount'     => 3,
+		);
+
+		wp_enqueue_script( 'wsal-admin-js', MFM_WP_URL . 'assets/js/mfm-admin.js', array( 'jquery' ), '5.1.0', true );
+		wp_register_style( 'mfm-admin-css', MFM_WP_URL . 'assets/css/mfm-admin-css.css', false, '1.0.0' );
+		wp_enqueue_style( 'mfm-admin-css' );
+
+		wp_localize_script( 'wsal-admin-js', 'mfmJSData', $data_array );
 	}
 
 	/**
@@ -165,11 +157,9 @@ class Admin_Manager {
 	 * @since 2.0.0
 	 */
 	public static function register_admin_menu() {
-		$notification_count = self::get_current_notices_count();
-
 		add_menu_page(
 			__( 'File Monitoring', 'website-file-changes-monitor' ),
-			$notification_count ? sprintf( 'File Monitoring <span style="position: absolute; margin-left: 3px;" class="awaiting-mod">%d</span>', $notification_count ) : __( 'File Monitoring', 'website-file-changes-monitor' ),
+			__( 'File Monitoring', 'website-file-changes-monitor' ),
 			'manage_options',
 			'file-monitor-admin',
 			array( __CLASS__, 'file_monitor_admin' ),
@@ -296,7 +286,6 @@ class Admin_Manager {
 				<a href="?page=file-monitor-admin&tab=modified-events" class="nav-tab <?php echo esc_attr( self::is_active_tab( 'modified-events', $current_tab ) ); ?>"><?php esc_html_e( 'Files Modified Events', 'website-file-changes-monitor' ); ?></a>
 				<a href="?page=file-monitor-admin&tab=added-events" class="nav-tab <?php echo esc_attr( self::is_active_tab( 'added-events', $current_tab ) ); ?>"><?php esc_html_e( 'Files Added Events', 'website-file-changes-monitor' ); ?></a>
 				<a href="?page=file-monitor-admin&tab=removed-events" class="nav-tab <?php echo esc_attr( self::is_active_tab( 'removed-events', $current_tab ) ); ?>"><?php esc_html_e( 'Files Removed Events', 'website-file-changes-monitor' ); ?></a>
-				<a href="?page=file-monitor-admin&tab=permissions-events" class="nav-tab <?php echo esc_attr( self::is_active_tab( 'permissions-events', $current_tab ) ); ?>"><?php esc_html_e( 'Permissions Changed Events', 'website-file-changes-monitor' ); ?></a>
 				
 				<?php
 				$num_of_pages = ceil( DB_Handler::get_events( true, 0, 0, str_replace( '-events', '', $current_tab ) ) / Settings_Helper::get_setting( 'events-view-per-page', 30 ) );
@@ -326,7 +315,8 @@ class Admin_Manager {
 			</nav>
 
 			<form id="mfm-file-scanning-controls">
-				<input type="submit" name="run_tool" id="run_tool" data-nonce="<?php echo esc_attr( wp_create_nonce( MFM_PREFIX . 'start_scan_nonce' ) ); ?>" class="button button-primary mfm-button-primary <?php echo esc_attr( $button_class ); ?>" value=" <?php echo esc_attr( $button_label ); ?>">
+				<?php wp_nonce_field( 'start_directory_runner', 'run_tool_nonce' ); ?>
+				<input type="submit" name="run_tool" id="run_tool" class="button button-primary mfm-button-primary <?php echo esc_attr( $button_class ); ?>" value=" <?php echo esc_attr( $button_label ); ?>">
 				<p class="last-scan-time"><?php esc_html_e( 'Last scan time:', 'website-file-changes-monitor' ); ?> <?php echo esc_attr( $last_scan_time ); ?> | <?php esc_html_e( 'Showing results from last', 'website-file-changes-monitor' ); ?> <strong><?php echo esc_attr( Settings_Helper::get_setting( 'purge-length', 1 ) ); ?></strong>  <?php esc_html_e( 'scan(s)', 'website-file-changes-monitor' ); ?> <span class="mfm-info-hint hint--right" aria-label="<?php esc_html_e( 'You control how much scan data to keep in the plugin from the plugin\'s settings.', 'website-file-changes-monitor' ); ?>"><span class="dashicons dashicons-warning"></span></span></p>
 
 				<div id="mfm_events_search_wrapper">
@@ -368,7 +358,7 @@ class Admin_Manager {
 				<?php
 				$current_view = 'all';
 
-				if ( isset( $_REQUEST['tab'] ) && ( 'modified-events' === $_REQUEST['tab'] || 'added-events' === $_REQUEST['tab'] || 'removed-events' === $_REQUEST['tab'] || 'permissions-events' === $_REQUEST['tab'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				if ( isset( $_REQUEST['tab'] ) && ( 'modified-events' === $_REQUEST['tab'] || 'added-events' === $_REQUEST['tab'] || 'removed-events' === $_REQUEST['tab'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 					$current_view = sanitize_textarea_field( str_replace( '-events', '', sanitize_key( wp_unslash( $_REQUEST['tab'] ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				}
 
@@ -482,22 +472,6 @@ class Admin_Manager {
 
 		$expected = Settings_Helper::get_mfm_settings();
 		$posted   = wp_unslash( $_POST['mfm-settings'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-
-		if ( isset( $posted['scan-hour'] ) ) {
-			$posted_scan_time  = $posted['scan-hour'] . ':00' . ' ' . strtoupper( $posted['scan-hour-am'] ); // phpcs:ignore Generic.Strings.UnnecessaryStringConcat.Found
-			$current_scan_time = sprintf( '%02d', get_site_option( MFM_PREFIX . 'scan-hour', Settings_Helper::get_settings_default_value( 'scan-hour' ) ) ) . ':00' . ' ' . strtoupper( get_site_option( MFM_PREFIX . 'scan-hour-am', Settings_Helper::get_settings_default_value( 'scan-hour-am' ) ) ); // phpcs:ignore Generic.Strings.UnnecessaryStringConcat.Found
-
-			if ( 'weekly' === $posted['scan-frequency'] ) {
-				$posted_scan_time  .= ' ' . Settings_Helper::convert_to_day_string( $posted['scan-day'] );
-				$current_scan_time .= ' ' . Settings_Helper::convert_to_day_string( get_site_option( MFM_PREFIX . 'scan-day', Settings_Helper::get_settings_default_value( 'scan-day' ) ) );
-			}
-
-			if ( $posted_scan_time !== $current_scan_time ) {
-				do_action( MFM_PREFIX . 'scan_time_updated', $current_scan_time, $posted_scan_time );
-				Settings_Helper::clear_scan_schedule();
-			}
-		}
-
 		foreach ( array_keys( $expected ) as $expected_key ) {
 			if ( isset( $posted[ $expected_key ] ) ) {
 				if ( ! Settings_Helper::save_setting( $expected_key, $posted[ $expected_key ] ) ) {
@@ -511,7 +485,6 @@ class Admin_Manager {
 					return;
 			}
 		}
-
 		add_action( 'admin_notices', array( __CLASS__, 'settings_saved_notice' ) );
 	}
 
@@ -629,297 +602,5 @@ class Admin_Manager {
 		$new_links[] = '<a href="' . add_query_arg( 'page', 'file-monitor-settings', admin_url( 'admin.php' ) ) . '">' . __( 'Settings', 'website-file-changes-monitor' ) . '</a>';
 		$new_links[] = '<a href="' . add_query_arg( 'page', 'file-monitor-help', admin_url( 'admin.php' ) ) . '">' . __( 'Support', 'website-file-changes-monitor' ) . '</a>';
 		return array_merge( $new_links, $old_links );
-	}
-
-	/**
-	 * Show notice to recently updated plugin.
-	 *
-	 * @return void
-	 *
-	 * @since 2.2.0
-	 */
-	public static function plugin_was_updated_banner() {
-		$show_update_notice = get_site_option( MFM_PREFIX . 'update_notice_needed', false );
-		$screen             = get_current_screen();
-		$pages_for_banner   = array(
-			'toplevel_page_file-monitor-admin',
-			'toplevel_page_file-monitor-admin-network',
-		);
-
-		if ( in_array( $screen->base, $pages_for_banner, true ) && $show_update_notice ) {
-			?>
-			<!-- Copy START -->
-			<div class="mfm-plugin-update">
-				<div class="mfm-plugin-update-content">
-					<h2 class="mfm-plugin-update-title"><?php esc_html_e( 'Melapress File Monitor has been updated to version', 'website-file-changes-monitor' ); ?> <?php echo esc_attr( MFM_WP_VERSION ); ?>.</h2>
-					<p class="mfm-plugin-update-text">
-						<?php esc_html_e( 'You are now running the latest version of Melapress File Monitor. To see what\'s been included in this update, refer to the plugin\'s release notes and change log where we list all new features, updates, and bug fixes.', 'website-file-changes-monitor' ); ?>							
-					</p>
-					<a href="https://melapress.com/support/kb/website-file-changes-monitor-plugin-changelog/?utm_source=plugin&utm_medium=banner&utm_campaign=mfm" target="_blank" class="mfm-cta-link"><?php esc_html_e( 'Read the release notes', 'website-file-changes-monitor' ); ?></a>
-				</div>
-				<button aria-label="Close button" class="mfm-plugin-update-close" data-dismiss-nonce="<?php echo esc_attr( wp_create_nonce( MFM_PREFIX . 'dismiss_update_notice_nonce' ) ); ?>"></button>
-			</div>
-			<!-- Copy END -->
-			
-			<script type="text/javascript">
-			//<![CDATA[
-			jQuery(document).ready(function( $ ) {
-				jQuery( 'body' ).on( 'click', '.mfm-plugin-update-close, .mfm-cta-link', function ( e ) {
-					var nonce  = jQuery( '.mfm-plugin-update [data-dismiss-nonce]' ).attr( 'data-dismiss-nonce' );
-					
-					jQuery.ajax({
-						type: 'POST',
-						url: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
-						async: true,
-						data: {
-							action: 'dismiss_mfm_update_notice',
-							nonce : nonce,
-						},
-						success: function ( result ) {		
-							jQuery( '.mfm-plugin-update' ).slideUp( 300 );
-						}
-					});
-				});
-			});
-			//]]>
-			</script>
-			<?php
-		}
-
-		if ( ( in_array( $screen->base, $pages_for_banner, true ) && $show_update_notice ) ) {
-			?>
-			<style type="text/css">
-				/* Melapress brand font 'Quicksand' — There maybe be a preferable way to add this but this seemed the most discrete. */
-				@font-face {
-					font-family: 'Quicksand';
-					src: url('<?php echo \esc_url( MFM_WP_URL ); ?>assets/fonts/Quicksand-VariableFont_wght.woff2') format('woff2');
-					font-weight: 100 900; /* This indicates that the variable font supports weights from 100 to 900 */
-					font-style: normal;
-				}
-				
-				.mfm-plugin-update, .mfm-plugin-data-migration {
-					background-color: #1A3060;
-					border-radius: 7px;
-					color: #fff;
-					display: flex;
-					justify-content: space-between;
-					align-items: center;
-					padding: 1.66rem;
-					position: relative;
-					overflow: hidden;
-					transition: all 0.2s ease-in-out;
-					margin-top: 20px;
-					margin-right: 20px;
-				}
-			
-
-				.mfm-plugin-update-content {
-					max-width: 45%;
-				}
-				
-				.mfm-plugin-update-title {
-					margin: 0;
-					font-size: 20px;
-					font-weight: bold;
-					font-family: Quicksand, sans-serif;
-					line-height: 1.44rem;
-					color: #fff;
-				}
-				
-				.mfm-plugin-update-text {
-					margin: .25rem 0 0;
-					font-size: 0.875rem;
-					line-height: 1.3125rem;
-				}
-				
-				.mfm-plugin-update-text a:link {
-					color: #FF8977;
-				}
-				
-				.mfm-cta-link {
-					border-radius: 0.25rem;
-					background: #FF8977;
-					color: #0000EE;
-					font-weight: bold;
-					text-decoration: none;
-					font-size: 0.875rem;
-					padding: 0.675rem 1.3rem .7rem 1.3rem;
-					transition: all 0.2s ease-in-out;
-					display: inline-block;
-					margin: .5rem auto;
-				}
-				
-				.mfm-cta-link:hover {
-					background: #0000EE;
-					color: #FF8977;
-				}
-				
-				.mfm-plugin-update-close {
-					background-image: url(<?php echo esc_url( MFM_WP_URL ) . 'assets/img/close-icon-rev.svg'; ?>); /* Path to your close icon */
-					background-size: cover;
-					width: 18px;
-					height: 18px;
-					border: none;
-					cursor: pointer;
-					position: absolute;
-					top: 20px;
-					right: 20px;
-					background-color: transparent;
-				}
-				
-				.mfm-plugin-update::before {
-					content: '';
-					background-image: url(<?php echo esc_url( MFM_WP_URL ) . 'assets/img/mfm-updated-bg.png'; ?>); /* Background image only displayed on desktop */
-					background-size: 100%;
-					background-repeat: no-repeat;
-					background-position: 100% 51%;
-					position: absolute;
-					top: 0;
-					right: 0;
-					bottom: 0;
-					left: 0;
-					z-index: 0;
-				}
-				
-				.mfm-plugin-update-content, .mfm-plugin-update-close {
-					z-index: 1;
-				}
-				
-				@media (max-width: 1200px) {
-					.mfm-plugin-update::before {
-						display: none;
-					}
-				
-					.mfm-plugin-update-content {
-						max-width: 100%;
-					}
-				}
-
-				.mfm-plugin-data-migration {
-					background-color: #D9E4FD;						
-				}
-
-				.mfm-plugin-data-migration * {
-					color: #1A3060;
-				}
-
-				.mfm-plugin-data-migration .mfm-plugin-update-content {
-					min-height: 80px;
-				}
-					
-				#spinning-wrapper {
-					position: absolute;
-					right: -20px;
-					height: 300px;
-					width: 300px;
-				}
-
-				#spinning-wrapper .dashicons {
-					height: 300px;
-					height: 300px;
-					font-size: 300px;
-				}
-
-				#spinning-wrapper  * {
-					color: #8AAAF1 !important;
-				}
-
-				#spinning-wrapper.active {
-					-webkit-animation: spin 4s infinite linear;
-				}
-
-				@-webkit-keyframes spin {
-					0%  {-webkit-transform: rotate(0deg);}
-					100% {-webkit-transform: rotate(360deg);}   
-				}
-			</style>
-			<?php
-		}
-	}
-
-	/**
-	 * Handle notice dismissal.
-	 *
-	 * @return void
-	 *
-	 * @since 2.2.0
-	 */
-	public static function dismiss_update_notice() {
-		// Grab POSTed data.
-		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : false;
-
-		// Check nonce.
-		if ( ! current_user_can( 'manage_options' ) || empty( $nonce ) || ! $nonce || ! wp_verify_nonce( $nonce, MFM_PREFIX . 'dismiss_update_notice_nonce' ) ) {
-			wp_send_json_error( esc_html__( 'Nonce Verification Failed.', 'melapress-login-security' ) );
-		}
-
-		delete_site_option( MFM_PREFIX . 'update_notice_needed' );
-
-		wp_send_json_success( esc_html__( 'Complete.', 'melapress-login-security' ) );
-	}
-
-	/**
-	 * Simple checker for admin facing notices.
-	 *
-	 * @return int - Count.
-	 *
-	 * @since 2.2.0
-	 */
-	public static function get_current_notices_count() {
-		$count = 0;
-
-		if ( get_site_option( MFM_PREFIX . 'update_notice_needed', false ) ) {
-			++$count;
-		}
-
-		return $count;
-	}
-
-	/**
-	 * Show notice to user on plugin version update.
-	 *
-	 * @return void
-	 *
-	 * @since 2.2.0
-	 */
-	public static function check_plugin_update() {
-		$stored_version          = get_site_option( MFM_PREFIX . 'active_version', false );
-		$existing_last_scan_time = get_site_option( MFM_PREFIX . 'last_scan_time', false );
-
-		if ( $existing_last_scan_time && ! empty( $existing_last_scan_time ) ) {
-			if ( ! empty( $stored_version ) && version_compare( $stored_version, MFM_WP_VERSION, '<' ) ) {
-				update_site_option( MFM_PREFIX . 'active_version', MFM_WP_VERSION );
-				update_site_option( MFM_PREFIX . 'show_update_notice', true );
-			} elseif ( empty( $stored_version ) ) {
-				update_site_option( MFM_PREFIX . 'active_version', MFM_WP_VERSION );
-				update_site_option( MFM_PREFIX . 'show_update_notice', true );
-			}
-
-			if ( get_site_option( MFM_PREFIX . 'show_update_notice', false ) ) {
-				delete_site_option( MFM_PREFIX . 'show_update_notice' );
-				update_site_option( MFM_PREFIX . 'update_notice_needed', true );
-				$args = array(
-					'page' => 'file-monitor-admin',
-				);
-				$url  = add_query_arg( $args, network_admin_url( 'admin.php' ) );
-				wp_safe_redirect( $url );
-				exit;
-			}
-		}
-
-		if ( ! $stored_version ) {
-			update_site_option( MFM_PREFIX . 'active_version', MFM_WP_VERSION );
-		}
-
-		if ( get_site_option( MFM_PREFIX . 'show_update_notice', false ) ) {
-			delete_site_option( MFM_PREFIX . 'show_update_notice' );
-			update_site_option( MFM_PREFIX . 'update_notice_needed', true );
-			$args = array(
-				'page' => 'file-monitor-admin',
-			);
-			$url  = add_query_arg( $args, network_admin_url( 'admin.php' ) );
-			wp_safe_redirect( $url );
-			exit;
-		}
 	}
 }

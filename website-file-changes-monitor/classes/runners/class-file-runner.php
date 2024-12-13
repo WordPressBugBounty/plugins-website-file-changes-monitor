@@ -61,12 +61,11 @@ class File_Runner extends \WP_Background_Process {
 
 			if ( isset( $files['paths'] ) ) {
 				$data = array(
-					'path'             => $path,
-					'file_paths'       => maybe_serialize( $files['paths'] ),
-					'file_hashes'      => maybe_serialize( $files['hashs'] ),
-					'file_timestamps'  => maybe_serialize( $files['timestamps'] ),
-					'data_hash'        => md5( maybe_serialize( $files ) ),
-					'file_permissions' => maybe_serialize( $files['permissions'] ),
+					'path'            => $path,
+					'file_paths'      => maybe_serialize( $files['paths'] ),
+					'file_hashes'     => maybe_serialize( $files['hashs'] ),
+					'file_timestamps' => maybe_serialize( $files['timestamps'] ),
+					'data_hash'       => md5( maybe_serialize( $files ) ),
 				);
 				DB_Handler::insert_data( DB_Handler::$scanned_files_table_name, $data );
 			}
