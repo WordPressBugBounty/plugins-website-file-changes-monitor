@@ -80,11 +80,33 @@ class Init_Sensor {
 				function ( $types ) {
 					$new_types = array(
 						'finished' => esc_html__( 'Finished', 'website-file-changes-monitor' ),
+						'purged'   => esc_html__( 'Purged', 'website-file-changes-monitor' ),
 					);
 
 					// combine the two arrays.
 					$types = array_merge( $types, $new_types );
 					return $types;
+				}
+			);
+
+			add_filter(
+				'wsal_event_objects',
+				/**
+				* Adds new type to array.
+				*
+				* @return array
+				*
+				* @since 2.0.0
+				 */
+				function ( $objects ) {
+					$new_objects = array(
+						'file_monitor' => __( 'File Monitor', 'website-file-changes-monitor' ),
+					);
+
+					// combine the two arrays.
+					$objects = array_merge( $objects, $new_objects );
+
+					return $objects;
 				}
 			);
 

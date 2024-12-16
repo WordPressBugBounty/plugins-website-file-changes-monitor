@@ -59,6 +59,7 @@ class Setting_Validator {
 			'email-changes-limit',
 			'max-file-size',
 			'purge-length',
+			'events-view-per-page',
 		);
 
 		$yes_no_settings = array(
@@ -73,11 +74,31 @@ class Setting_Validator {
 
 		$current_excluded_directories = Settings_Helper::get_setting( 'excluded_directories' );
 
-		if ( 'custom_email_address' === $setting_to_validate || 'from-email' === $setting_to_validate ) {
+		if ( 'from-email' === $setting_to_validate ) {
 			if ( ! empty( $incoming ) && ! filter_var( $incoming, FILTER_VALIDATE_EMAIL ) ) {
 				return false;
 			}
 			return sanitize_email( $incoming );
+		}
+
+		if ( 'custom_email_address' === $setting_to_validate ) {
+			if ( strpos( $incoming, ',' ) !== false ) {
+				$incoming_addresses = explode( ',', $incoming );
+				$return_string = array();
+				foreach ( $incoming_addresses as $incoming_address ) {
+					if ( ! filter_var( $incoming_address, FILTER_VALIDATE_EMAIL ) ) {
+						return false;
+					} else {
+						$return_string[] = sanitize_email( $incoming_address );
+					}					
+				}
+				return implode( ',', $return_string );
+			} else {
+				if ( ! empty( $incoming ) && ! filter_var( $incoming, FILTER_VALIDATE_EMAIL ) ) {
+					return false;
+				}
+				return sanitize_email( $incoming );
+			}			
 		}
 
 		if ( 'excluded_directories' === $setting_to_validate || 'ignored_directories' === $setting_to_validate ) {
@@ -105,7 +126,7 @@ class Setting_Validator {
 				$incoming = array();
 			}
 			foreach ( $incoming as $item ) {
-				if ( 'excluded_file_extensions' === $setting_to_validate ) {
+				if ( 'excluded_file_extensions' === $setting_to_validate || 'allowed-in-core-files' === $setting_to_validate ) {
 					$sanitized[] = sanitize_text_field( $item );
 				} else {
 					$sanitized[] = Settings_Helper::sanitize_search_input( $item );

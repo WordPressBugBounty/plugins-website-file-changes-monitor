@@ -142,8 +142,17 @@ class Emailer {
 			return;
 		}
 
-		$to = isset( $_POST['email_address'] ) ? sanitize_email( wp_unslash( $_POST['email_address'] ) ) : false;
+		$email_address = wp_unslash( $_POST['email_address'] );
 
+		if ( str_contains( $email_address, ',' ) ) {
+			$to = array();
+			foreach ( explode( ',', $email_address ) as $email ) {
+				$to[] = sanitize_email( $email );
+			}
+		} else {
+			$to = isset( $_POST['email_address'] ) ? sanitize_email( $email_address ) : false;
+		}
+		
 		if ( ! $to ) {
 			$return = array(
 				'message' => __( 'No email supplied', 'website-file-changes-monitor' ),
