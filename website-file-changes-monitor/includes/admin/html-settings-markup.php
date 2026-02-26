@@ -13,6 +13,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use MFM\Admin\Template_Parts\Wildcard_Hint;
+
 $mfm_settings      = \MFM\Helpers\Settings_Helper::get_mfm_settings();
 $email_notice_type = $mfm_settings['email_notice_type'];
 
@@ -213,6 +215,8 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 							<th><label for="mfm-settings-exclude-dirs"><?php esc_html_e( 'Ignore all files in these directories', 'website-file-changes-monitor' ); ?></label></th>
 								<td>
 								<fieldset>
+									<?php Wildcard_Hint::render(); ?>
+									<br>
 									<div class="mfm-files-container">
 										<input class="name" type="text" data-input-for="excluded_directories">
 										<input class="button add" data-list-type="excluded_directories" type="button" value="Add" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>">
@@ -327,6 +331,8 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 							<th><label for="mfm-settings-exclude-dirs"><?php esc_html_e( 'Exclude all files in these directories', 'website-file-changes-monitor' ); ?></label></th>
 							<td>
 							<fieldset>
+									<?php Wildcard_Hint::render(); ?>
+									<br>
 									<div class="mfm-files-container">
 										<input class="name" type="text" data-input-for="ignored_directories">
 										<input class="button add" data-list-type="ignored_directories" type="button" value="Add" data-validate-setting-nonce="<?php echo esc_attr( $validate_nonce ); ?>">
@@ -345,7 +351,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 										?>
 									</div>	
 									
-									<div class="mfm-removals" data-marked-for-removal-for="ignored_directories"><span></span> <?php esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
+									<div class="mfm-removals" data-marked-for-removal-for="ignored_directories"><span></span> <?php \esc_html_e( 'will be removed on next save.', 'website-file-changes-monitor' ); ?></div>
 								</fieldset>
 							</td>
 						</tr>
@@ -441,7 +447,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 					</th>
 					<td>
 						<fieldset>
-							<p class="description"><?php esc_html_e( 'Only specify the name and extension of the file(s) you want to allow in the website root and core directories. There is no need to specify the path of the file. Wildcards are not supported.', 'website-file-changes-monitor' ); ?></p>
+							<p class="description"><?php \esc_html_e( 'Only specify the name and extension of the file(s) you want to allow in the website root and core directories. There is no need to specify the path of the file. Wildcards are not supported.', 'website-file-changes-monitor' ); ?></p>
 							<br>
 
 							<div class="mfm-files-container">
@@ -655,7 +661,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 				</table>
 			<?php } ?>
 
-			<h3><?php esc_html_e( 'Debug & uninstall settings', 'website-file-changes-monitor' ); ?></h3>
+			<h3><?php esc_html_e( 'Debug & deactivation settings', 'website-file-changes-monitor' ); ?></h3>
 			<p class="description">
 				<?php esc_html_e( 'Enable the debug logging when requested by support. This is used for support.', 'website-file-changes-monitor' ); ?> <?php esc_html_e( 'The debug log file is saved in the /wp-content/uploads/mfm-logs/ folder on your website.', 'website-file-changes-monitor' ); ?>
 			</p>
@@ -676,7 +682,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 
 			<table class="form-table mfm-settings-danger">
 				<tr>
-					<th><label for="mfm-delete-data"><?php esc_html_e( 'Delete plugin data upon uninstall', 'website-file-changes-monitor' ); ?></label></th>
+					<th><label for="mfm-delete-data"><?php esc_html_e( 'Delete plugin data upon deactivation', 'website-file-changes-monitor' ); ?></label></th>
 					<td>
 						<fieldset>
 

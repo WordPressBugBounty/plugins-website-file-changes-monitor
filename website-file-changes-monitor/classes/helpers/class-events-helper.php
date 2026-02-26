@@ -23,18 +23,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Events_Helper {
 
 	/**
-	 * Create and output neat label for use in events view.
+	 * Get event labels.
 	 *
-	 * @param string $types - Lookup type.
-	 * @param string $current_view - View.
-	 * @param bool   $return_instead_of_echo - Return or echo markup.
+	 * @return array - Labels.
 	 *
-	 * @return void|string.
-	 *
-	 * @since 2.0.0
+	 * @since 2.3.0
 	 */
-	public static function create_event_type_label( $types, $current_view = 'all', $return_instead_of_echo = false ) {
-
+	public static function get_event_label_array() {
 		$event_labels = array(
 			'file-scan-started'                    => __( 'File scan started ', 'website-file-changes-monitor' ),
 			'core-file-modified'                   => __( 'Core file modified ', 'website-file-changes-monitor' ),
@@ -73,6 +68,23 @@ class Events_Helper {
 			'theme-directory-added'                => __( 'Theme added ', 'website-file-changes-monitor' ),
 			'theme-updated'                        => __( 'Theme updated ', 'website-file-changes-monitor' ),
 		);
+
+		return $event_labels;
+	}
+
+	/**
+	 * Create and output neat label for use in events view.
+	 *
+	 * @param string $types - Lookup type.
+	 * @param string $current_view - View.
+	 * @param bool   $return_instead_of_echo - Return or echo markup.
+	 *
+	 * @return void|string.
+	 *
+	 * @since 2.0.0
+	 */
+	public static function create_event_type_label( $types, $current_view = 'all', $return_instead_of_echo = false ) {
+		$event_labels = self::get_event_label_array();
 
 		$label = $types;
 		if ( strpos( $types, ',' ) !== false ) {
@@ -213,15 +225,21 @@ class Events_Helper {
 								}
 							}
 							?>
-								<span class="mfm-list-item <?php echo esc_attr( $item_class ); ?>"><?php echo esc_html__( 'File', 'website-file-changes-monitor' ); ?> <?php echo esc_attr( ucfirst( str_replace( '_', ' ', $change_type ) ) ); ?>: <?php echo wp_kses_post( str_replace( ABSPATH, '', $file ) ); ?> <div class="mfm_file_actions_panel"><a href="#" data-mfm-update-setting data-exclude-file="<?php echo esc_attr( $file ); ?>" class="hint--left" aria-label="Ignore file from future scans"><span class="dashicons dashicons-insert"></span></a></div></span>
+								<?php
+								if ( is_array( $file ) && isset( $file['file'] ) ) {
+									$file_path = (string) $file['file'];
+
+									$display_text = str_replace( ABSPATH, '', $file_path ) . ' (' . esc_html__( 'Previous: ', 'website-file-changes-monitor' ) . '<b>' . esc_html( $file['previous'] ) . '</b> ' . esc_html__( 'Current: ', 'website-file-changes-monitor' ) . '<b>' . esc_html( $file['current'] ) . '</b>)';
+								} else {
+									$file_path    = (string) $file;
+									$display_text = str_replace( ABSPATH, '', $file );
+								}
+								?>
+								<span class="mfm-list-item <?php echo esc_attr( $item_class ); ?>"><?php echo esc_html__( 'File', 'website-file-changes-monitor' ); ?> <?php echo esc_attr( ucfirst( str_replace( '_', ' ', $change_type ) ) ); ?>: <?php echo wp_kses_post( $display_text ); ?> <div class="mfm_file_actions_panel"><a href="#" data-mfm-update-setting data-exclude-file="<?php echo esc_attr( $file_path ); ?>" class="hint--left" aria-label="Ignore file from future scans"><span class="dashicons dashicons-insert"></span></a></div></span>
 							<?php
 						}
 					}
 				}
-			} elseif ( is_array( $file_array ) && empty( $file_array ) ) {
-				?>
-					<span data-empty-dir-wrapper><?php echo esc_html__( 'Empty directory', 'website-file-changes-monitor' ); ?></span>
-				<?php
 			} else {
 				?>
 				<span class="mfm-list-item">

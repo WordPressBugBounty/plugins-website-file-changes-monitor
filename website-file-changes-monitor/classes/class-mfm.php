@@ -30,6 +30,22 @@ use MFM\Crons\Cron_Handler;
 class MFM {
 
 	/**
+	 * Number of items to accumulate before saving a batch to wp_options.
+	 *
+	 * @since 2.3.0
+	 */
+	const BATCH_CHUNK_SIZE = 100;
+
+	/**
+	 * Counter for directory items queued but not yet saved.
+	 *
+	 * @var int
+	 *
+	 * @since 2.3.0
+	 */
+	private static $dir_queue_count = 0;
+
+	/**
 	 * Background runner for directories.
 	 *
 	 * @var WP_Background_Process
@@ -124,6 +140,10 @@ class MFM {
 		if ( ! get_site_option( MFM_PREFIX . 'permissions_column_created' ) ) {
 			DB_Handler::create_permissions_column();
 		}
+
+		if ( class_exists( '\WP_CLI' ) ) {
+			WP_CLI::add_command( 'mfm_mark_as_read', array( '\MFM\Admin\CLI_Commands', 'mark_read' ) );
+		}
 	}
 
 	/**
@@ -140,20 +160,53 @@ class MFM {
 	/**
 	 * Add directory runner item to queue.
 	 *
-	 * @param  string $path - Path to add.
+	 * Batches items and only persists to DB every BATCH_CHUNK_SIZE items
+	 * to avoid flooding wp_options with one row per directory.
+	 *
+	 * @param string $path - Path to add.
 	 *
 	 * @return void
+	 *
+	 * @since 2.3.0 Changed to batch saves instead of saving every single folder item.
 	 */
 	public static function push_item_to_list( $path ) {
 		if ( ! Directory_And_File_Helpers::is_path_ignored( $path ) ) {
 			self::$dir_runner->push_to_queue( $path );
-			self::$dir_runner->save()->dispatch();
+
+			++self::$dir_queue_count;
+
+			if ( self::$dir_queue_count >= self::BATCH_CHUNK_SIZE ) {
+				// Save the batch to the DB table wp_options.
+				self::$dir_runner->save();
+
+				// Reset the counter, to start counting the next batch.
+				self::$dir_queue_count = 0;
+			}
 		}
 	}
 
 	/**
+	 * Flush any remaining queued dir items that didn't reach the chunk threshold.
+	 *
+	 * @return bool True if items were flushed, false if nothing to flush.
+	 *
+	 * @since 2.3.0
+	 */
+	public static function flush_dir_runner_queue() {
+		if ( self::$dir_queue_count > 0 ) {
+			self::$dir_runner->save();
+
+			self::$dir_queue_count = 0;
+
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Start the scan process off as a whole.
-	 * 
+	 *
 	 * @param string $nonce - Nonce, if from cron.
 	 *
 	 * @return void
@@ -167,14 +220,14 @@ class MFM {
 		if ( ! $post_nonce || ! wp_verify_nonce( $post_nonce, MFM_PREFIX . 'start_scan_nonce' ) ) {
 			return;
 		}
-		
+
 		// If we have nonce but not perms, bail.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			$is_cron = ( defined( 'DOING_CRON' ) && DOING_CRON );
 			// If current request was triggered via cron, allow - otherwise, no thanks.
 			if ( ! $is_cron ) {
 				return;
-			}			
+			}
 		}
 
 		wp_cache_delete( MFM_PREFIX . 'events_cache' );
@@ -219,13 +272,14 @@ class MFM {
 			$core_files = Directory_And_File_Helpers::create_core_file_keys();
 			foreach ( $core_files as $item ) {
 				self::$core_runner->push_to_queue( $item );
-				self::$core_runner->save();
 			}
 
-			self::$core_runner->dispatch();
+			self::$core_runner->save()->dispatch();
 		}
 
 		$base = apply_filters( MFM_PREFIX . 'append_dir_to_scan', $base );
+
+		$dir_count = 0;
 
 		foreach ( $base as $base_item ) {
 			$perms = substr( sprintf( '%o', fileperms( $base_item ) ), -4 );
@@ -234,18 +288,28 @@ class MFM {
 				'time'        => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 				'permissions' => $perms,
 			);
+
 			DB_Handler::insert_data( DB_Handler::$scanned_directories_table_name, $data );
+
 			$items = Directory_And_File_Helpers::get_directories_from_path( $base_item );
+
 			foreach ( $items as $item ) {
 				if ( Directory_And_File_Helpers::is_path_ignored( $item ) ) {
 					continue;
 				}
+
 				self::$dir_runner->push_to_queue( $item );
-				self::$dir_runner->save();
+
+				++$dir_count;
+
+				// Every precise BATCH_CHUNK_SIZE items, save to the DB.
+				if ( 0 === $dir_count % self::BATCH_CHUNK_SIZE ) {
+					self::$dir_runner->save();
+				}
 			}
 		}
 
-		self::$dir_runner->dispatch();
+		self::$dir_runner->save()->dispatch();
 
 		// All good, pat on the back.
 		wp_send_json_success( array( 'message' => 'Started' ) );
@@ -259,6 +323,17 @@ class MFM {
 	 * @since 2.0.0
 	 */
 	public static function directory_run_completed() {
+		/**
+		 * Flush any remaining queued items that didn't reach the chunk threshold.
+		 * If items were flushed, re-dispatch the runner to process them.
+		 */
+		if ( self::flush_dir_runner_queue() ) {
+			// Process the newly flushed items.
+			self::$dir_runner->dispatch();
+
+			return;
+		}
+
 		DB_Handler::dump_into_db( 'directory_runner_cache' );
 
 		$msg = Logger::get_log_timestamp() . ' SCAN STEP 2 - DIRECTORIES SCANNED, START FILE RUNNER' . " \n";
@@ -300,13 +375,20 @@ class MFM {
 		);
 		Scan_Status_Monitor::update_status( $details );
 
-		$dirs = DB_Handler::get_directory_runner_results( false );
+		$dirs  = DB_Handler::get_directory_runner_results( false );
+		$count = 0;
 
 		foreach ( $dirs as $item ) {
 			self::$file_runner->push_to_queue( $item );
-			self::$file_runner->save();
+
+			++$count;
+
+			if ( 0 === $count % self::BATCH_CHUNK_SIZE ) {
+				self::$file_runner->save();
+			}
 		}
-		self::$file_runner->dispatch();
+
+		self::$file_runner->save()->dispatch();
 	}
 
 	/**
@@ -388,11 +470,20 @@ class MFM {
 		Logger::write_to_log( $msg );
 
 		$file_result = DB_Handler::get_file_runner_results( false );
+		$count       = 0;
+
 		foreach ( $file_result as $item ) {
 			self::$file_comparison_runner->push_to_queue( $item );
-			self::$file_comparison_runner->save();
+
+			++$count;
+
+			// Every precise BATCH_CHUNK_SIZE items, save to the DB.
+			if ( 0 === $count % self::BATCH_CHUNK_SIZE ) {
+				self::$file_comparison_runner->save();
+			}
 		}
-		self::$file_comparison_runner->dispatch();
+
+		self::$file_comparison_runner->save()->dispatch();
 	}
 
 	/**

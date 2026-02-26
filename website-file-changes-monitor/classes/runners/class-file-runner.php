@@ -23,7 +23,7 @@ use MFM\DB_Handler;
  *
  * @since 2.0.0
  */
-class File_Runner extends \WP_Background_Process {
+class File_Runner extends \MFM\WP_Background_Process {
 
 	/**
 	 * Runner prefix.
@@ -59,20 +59,49 @@ class File_Runner extends \WP_Background_Process {
 
 			$files = Directory_And_File_Helpers::scan_and_store_files( $path );
 
-			if ( isset( $files['paths'] ) ) {
-				$data = array(
-					'path'             => $path,
-					'file_paths'       => maybe_serialize( $files['paths'] ),
-					'file_hashes'      => maybe_serialize( $files['hashs'] ),
-					'file_timestamps'  => maybe_serialize( $files['timestamps'] ),
-					'data_hash'        => md5( maybe_serialize( $files ) ),
-					'file_permissions' => maybe_serialize( $files['permissions'] ),
-				);
-				DB_Handler::insert_data( DB_Handler::$scanned_files_table_name, $data );
-			}
+			/**
+			 * Always insert a row, even for empty directories. Without a row in mfm_scanned_files,
+			 * compare_file_changes() is never called for this directory, so files that were deleted
+			 * leaving it empty would never be detected as "removed".
+			 */
+			$data = array(
+				'path'             => $path,
+				'file_paths'       => \maybe_serialize( $files['paths'] ?? array() ),
+				'file_hashes'      => \maybe_serialize( $files['hashs'] ?? array() ),
+				'file_timestamps'  => \maybe_serialize( $files['timestamps'] ?? array() ),
+				'data_hash'        => md5( \maybe_serialize( $files ) ),
+				'file_permissions' => \maybe_serialize( $files['permissions'] ?? array() ),
+			);
+
+			DB_Handler::insert_data( DB_Handler::$scanned_files_table_name, $data );
 		}
 
 		return false;
+	}
+
+	/**
+	 * Background process chain ID.
+	 *
+	 * @var string
+	 * @since 2.3.0
+	 */
+	private $mfm_chain_id = '';
+
+	/**
+	 * Get chain ID without cross-runner nonce verification.
+	 *
+	 * Overrides parent to avoid check_ajax_referer() call that fails
+	 * when dispatching one runner from another runner's AJAX context.
+	 *
+	 * @return string
+	 *
+	 * @since 2.3.0
+	 */
+	public function get_chain_id() {
+		if ( empty( $this->mfm_chain_id ) ) {
+			$this->mfm_chain_id = \wp_generate_uuid4();
+		}
+		return $this->mfm_chain_id;
 	}
 
 	/**

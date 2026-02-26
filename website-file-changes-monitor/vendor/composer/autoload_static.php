@@ -4,40 +4,40 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit576136614cd39781f9912b597da3133f
+class ComposerStaticInitb108f1a8d9ecfd98ee7dbe04fc6d052a
 {
     public static $prefixLengthsPsr4 = array (
-        'P' => 
+        'P' =>
         array (
             'Psr\\SimpleCache\\' => 16,
             'Psr\\Cache\\' => 10,
             'Phpfastcache\\Tests\\' => 19,
             'Phpfastcache\\' => 13,
         ),
-        'M' => 
+        'M' =>
         array (
             'MFM\\' => 4,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'Psr\\SimpleCache\\' => 
+        'Psr\\SimpleCache\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/simple-cache/src',
         ),
-        'Psr\\Cache\\' => 
+        'Psr\\Cache\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/cache/src',
         ),
-        'Phpfastcache\\Tests\\' => 
+        'Phpfastcache\\Tests\\' =>
         array (
             0 => __DIR__ . '/..' . '/phpfastcache/phpfastcache/tests/lib',
         ),
-        'Phpfastcache\\' => 
+        'Phpfastcache\\' =>
         array (
             0 => __DIR__ . '/..' . '/phpfastcache/phpfastcache/lib/Phpfastcache',
         ),
-        'MFM\\' => 
+        'MFM\\' =>
         array (
             0 => __DIR__ . '/../..' . '/classes',
         ),
@@ -48,6 +48,8 @@ class ComposerStaticInit576136614cd39781f9912b597da3133f
         'MFM' => __DIR__ . '/../..' . '/classes/class-mfm.php',
         'MFM\\Admin\\AJAX_Tasks' => __DIR__ . '/../..' . '/classes/admin/class-ajax-tasks.php',
         'MFM\\Admin\\Admin_Manager' => __DIR__ . '/../..' . '/classes/admin/class-admin-manager.php',
+        'MFM\\Admin\\CLI_Commands' => __DIR__ . '/../..' . '/classes/admin/class-cli-commands.php',
+        'MFM\\Admin\\Template_Parts\\Wildcard_Hint' => __DIR__ . '/../..' . '/classes/admin/template-parts/class-wildcard-hint.php',
         'MFM\\Crons\\Cron_Handler' => __DIR__ . '/../..' . '/classes/crons/class-cron-handler.php',
         'MFM\\DB_Handler' => __DIR__ . '/../..' . '/classes/class-db-handler.php',
         'MFM\\Helpers\\Directory_And_File_Helpers' => __DIR__ . '/../..' . '/classes/helpers/class-directory-and-file-helpers.php',
@@ -63,9 +65,9 @@ class ComposerStaticInit576136614cd39781f9912b597da3133f
         'MFM\\Runners\\File_Comparison_Runner' => __DIR__ . '/../..' . '/classes/runners/class-file-comparison-runner.php',
         'MFM\\Runners\\File_Runner' => __DIR__ . '/../..' . '/classes/runners/class-file-runner.php',
         'MFM\\Scan_Status_Monitor' => __DIR__ . '/../..' . '/classes/class-scan-status-monitor.php',
+        'MFM\\WP_Async_Request' => __DIR__ . '/..' . '/deliciousbrains/wp-background-processing/classes/wp-async-request.php',
+        'MFM\\WP_Background_Process' => __DIR__ . '/..' . '/deliciousbrains/wp-background-processing/classes/wp-background-process.php',
         'MFM\\WSAL\\Init_Sensor' => __DIR__ . '/../..' . '/classes/activity-log/class-init-sensor.php',
-        'WP_Async_Request' => __DIR__ . '/..' . '/deliciousbrains/wp-background-processing/classes/wp-async-request.php',
-        'WP_Background_Process' => __DIR__ . '/..' . '/deliciousbrains/wp-background-processing/classes/wp-background-process.php',
         'WSAL\\Custom_Alerts\\MFM_Alerts' => __DIR__ . '/../..' . '/classes/activity-log/class-mfm-alerts.php',
         'WSAL\\Plugin_Sensors\\MFM_Sensor' => __DIR__ . '/../..' . '/classes/activity-log/class-mfm-sensor.php',
     );
@@ -73,9 +75,9 @@ class ComposerStaticInit576136614cd39781f9912b597da3133f
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit576136614cd39781f9912b597da3133f::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit576136614cd39781f9912b597da3133f::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit576136614cd39781f9912b597da3133f::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitb108f1a8d9ecfd98ee7dbe04fc6d052a::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitb108f1a8d9ecfd98ee7dbe04fc6d052a::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInitb108f1a8d9ecfd98ee7dbe04fc6d052a::$classMap;
 
         }, null, ClassLoader::class);
     }

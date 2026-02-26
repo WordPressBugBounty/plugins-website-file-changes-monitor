@@ -272,18 +272,19 @@ class Cron_Handler {
 		foreach ( $schedule_options as $schedule_key => $schedule ) {
 			$schedules[ MFM_PREFIX . 'directory_runner_cron_interval' ] = array(
 				'interval' => $schedule['interval'],
-				'display'  => __( 'Every', 'website-file-changes-monitor' ) . ' ' . $schedule['display'],
+				'display'  => 'Every ' . $schedule['display'],
 			);
 		}
 
 		$schedules['tenminutes'] = array(
 			'interval' => 600,
-			'display'  => __( 'Every 10 minutes', 'website-file-changes-monitor' ),
+			'display'  => 'Every 10 minutes',
 		);
 		$schedules['weekly']     = array(
 			'interval' => 7 * DAY_IN_SECONDS,
-			'display'  => __( 'Once a week', 'website-file-changes-monitor' ),
+			'display'  => 'Once a week',
 		);
+
 		return $schedules;
 	}
 

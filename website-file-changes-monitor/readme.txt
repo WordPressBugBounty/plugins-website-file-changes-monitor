@@ -5,8 +5,8 @@ License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl.html
 Tags: security, file monitor, malware detection, file security, file changes
 Requires at least: 5.0
-Tested up to: 6.9
-Stable tag: 2.2.1
+Tested up to: 6.9.1
+Stable tag: 2.3.0
 Requires PHP: 8.0
 
 Get email alerts for file and permission changes on your WordPress sites. No false positives!
@@ -148,17 +148,36 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Changelog ==
 
-= 2.1.1 (2024-10-21) =
+= 2.3 (2026-02-26) =
+
+ * **New features**
+	 * Added support for wildcards in folder exclusions: you can now use `*`, `**`, and `?` wildcards when defining the directories you want to exclude.
 
  * **Plugin improvements**
-	 * Added more checks and user input sanitization in the plugin.
+	 * Excluded file extensions are now fully skipped during scans. Previously the plugin was still reading and hashing these files. 
+	 * Ignored directories are now properly excluded from file change detection as well as from the scan itself.
+	 * Refactored the file comparison logic for improved performance, accuracy, and maintainability.
+	 * Optimized the way the plugin stores certain data so it no longer creates 10s of 1000s of temporary records during scans in the `wp_options` table. They're now limited, most websites will see less than 20 temporary records in `wp_options` and strictly only during scans.
+	 * Temporary files created by the phpfastcache library are now stored in `wp-content/uploads/melapress-file-monitor/mfm-tmp/` and are properly removed after use.
+	 * Improved the cron job's reliability to avoid scan interruptions and related scheduling issues.
+	 * Applied a number of generic scan performance and speed improvements.
+	 * Removed outdated Captcha 4WP references from the About page and updated branding assets.
 
- * **Security fix**
-	 * Fixed a SQL injection in the Search placeholder.
+ * **Bug fixes**
+	 
+	 * Fixed: PHP warning fileperms(): stat failed caused by phpfastcache writing temporary files to non-existent paths.
+	 * Fixed: all database tables and cron jobs are now properly cleaned up on uninstall.
+	 * Fixed: Cron job `mfm_monitor_file_changes` was not removed on plugin deactivation or uninstall due to an incorrect reference name.
+	 * Fixed: Files above the configured size limit were still having permissions changes and other events reported.
+	 * Fixed the PHP fatal error `wp_is_valid_utf8()` call to undefined function triggered in the setup wizard on completion.
+	 * Fixed: PHP fatal error caused by `phpfastcache` returning a non-array value in `Driver::driverRead()`.
+	 * Fixed: `TypeError` when saving settings with a null value passed to `strtoupper()`.
+	 * Fixed: PHP fatal error `Call to undefined method Directory_Runner::delete_all()` in `class-db-handler.php`.
+	 * Fixed: PHP notice for translation domain being loaded too early.
+	 * Fixed: The scan status REST endpoint was publicly accessible without authentication.
+	 * Fixed: Plugin was incorrectly identified as "File Manager" in [WP Activity Log](https://wordpress.org/plugins/wp-security-audit-log/) logs. Now it is correctly shown as "Melapress File Monitor".
 
-* **Bug fixes**
-	 * Fixed a failed nonce issue when searching for some speicfic strings.
-	 * Fixed: New added plugin or files via the media module not reported in plugin.
+Refer to the complete [plugin changelog](https://melapress.com/support/kb/website-file-changes-monitor-plugin-changelog/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm) for more detailed information about what was new, improved and fixed in previous version updates of Melapress File Monitor.
 
 
 

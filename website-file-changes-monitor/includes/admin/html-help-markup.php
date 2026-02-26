@@ -56,7 +56,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<p><?php esc_html_e( 'You can post your question on our support forum or send us an email for 1 to 1 support. Email support is provided to both free and premium plugin users.', 'website-file-changes-monitor' ); ?></p>
 	<div class="btn">
 		<a href="<?php echo esc_url( 'https://wordpress.org/support/plugin/website-file-changes-monitor' ); ?>" class="button" target="_blank"><?php esc_html_e( 'Free support forum', 'website-file-changes-monitor' ); ?></a>
-		<a href="<?php echo esc_url( 'https://melapress.com/support/submit-ticket/?utm_source=plugin&utm_medium=referral&utm_campaign=MFM&utm_content=free+support+email' ); ?>" class="button" target="_blank"><?php esc_html_e( 'Free email support', 'advanced-nocaptcha-recaptcha' ); ?></a>
+		<a href="<?php echo esc_url( 'https://melapress.com/support/submit-ticket/?utm_source=plugin&utm_medium=referral&utm_campaign=MFM&utm_content=free+support+email' ); ?>" class="button" target="_blank"><?php esc_html_e( 'Free email support', 'website-file-changes-monitor' ); ?></a>
 	</div>
 	<!-- End -->
 
@@ -94,12 +94,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 					'desc' => __( 'Add an extra layer of security to your login pages with 2FA & require your users to use it.', 'website-file-changes-monitor' ),
 					'alt'  => 'WP 2FA', // this is a name and intentionally not translated.
 					'link' => 'https://melapress.com/wordpress-2fa/?utm_source=plugin&utm_medium=link&utm_campaign=mfm',
-				),
-				array(
-					'img'  => trailingslashit( MFM_BASE_URL ) . 'assets/img/c4wp.jpg',
-					'desc' => __( 'Protect website forms & login pages from spambots & automated attacks.', 'website-file-changes-monitor' ),
-					'alt'  => 'CAPTCHA 4WP', // this is a name and intentionally not translated.
-					'link' => 'https://melapress.com/wordpress-captcha/?utm_source=plugin&utm_medium=link&utm_campaign=mfm',
 				),
 				array(
 					'img'  => trailingslashit( MFM_BASE_URL ) . 'assets/img/password-policy-manager.jpeg',

@@ -20,6 +20,7 @@ use MFM\Helpers\Settings_Helper;
 use MFM\Helpers\Events_Helper;
 use MFM\DB_Handler;
 use MFM\Helpers\Setting_Validator;
+use MFM\Crons\Cron_Handler;
 
 /**
  * Handles admin areas within the plugin.
@@ -115,7 +116,7 @@ class Admin_Manager {
 
 		$is_sub_slug = str_contains( $screen->base, 'file-monitoring' );
 
-		if ( in_array( $screen->base, $our_slugs, true ) || $is_sub_slug  ) {
+		if ( in_array( $screen->base, $our_slugs, true ) || $is_sub_slug ) {
 			$data_array = array(
 				'ajaxURL'                   => admin_url( 'admin-ajax.php' ),
 				'adminEmail'                => get_bloginfo( 'admin_email' ),
@@ -123,6 +124,7 @@ class Admin_Manager {
 				'ignored_directory_markup'  => '<span><input type="checkbox" name="mfm-settings[ignored_directories][]" id="" value="" checked=""><label for=""></label></span><br>',
 				'file_display_markup'       => '<span>File <span data-change-type-holder></span>: <span data-file-path-holder></span> <div class="mfm_file_actions_panel"><a href="#" data-mfm-update-setting class="hint--left" aria-label="Ignore file from future  scans"><span class="dashicons dashicons-insert"></span></a></div> <span class="mfm-action-spinner"><div class="icon-spin"><span class="dashicons dashicons-admin-generic"></span></div></span></span>',
 				'status_route'              => get_rest_url( null, 'mfm-scan-status/get-status' ),
+				'wp_rest_nonce'             => wp_create_nonce( 'wp_rest' ),
 				'fileInvalid'               => esc_html__( 'Filename cannot be added because it contains invalid characters.', 'website-file-changes-monitor' ),
 				'extensionInvalid'          => esc_html__( 'File extension cannot be added because it contains invalid characters.', 'website-file-changes-monitor' ),
 				'dirInvalid'                => esc_html__( 'Directory cannot be added because it contains invalid characters.', 'website-file-changes-monitor' ),
@@ -145,15 +147,27 @@ class Admin_Manager {
 				'clickToViewLabel'          => esc_html__( 'Click to view changes', 'website-file-changes-monitor' ),
 				'clickToHideLabel'          => esc_html__( 'Click to hide changes', 'website-file-changes-monitor' ),
 				'isWFCMDataFound'           => ! empty( get_site_option( 'wfcm_version' ) ),
-				'MFMWizardPanelMarkup'      => '<div id="mfm-wizard-old-data-found"><h3>' . esc_html__( 'Lets clear things out', 'website-file-changes-monitor' ) . '</h3><p>' . esc_html__( 'We detected data from our previous (now obsolete) WFCM plugin. As Melapress File Manager is all-new, this data will purged once the plugin guide you through the rest of the setup.', 'website-file-changes-monitor' ) . '</p></div>',
+				'MFMWizardPanelMarkup'      => '<div id="mfm-wizard-old-data-found"><h3>' . esc_html__( 'Lets clear things out', 'website-file-changes-monitor' ) . '</h3><p>' . esc_html__( 'We detected data from our previous (now obsolete) WFCM plugin. As Melapress File Monitor is all-new, this data will purged once the plugin guide you through the rest of the setup.', 'website-file-changes-monitor' ) . '</p></div>',
 				'expandListBelowAmount'     => 3,
 			);
-	
-			wp_enqueue_script( 'wsal-admin-js', MFM_WP_URL . 'assets/js/mfm-admin.js', array( 'jquery' ), '5.1.0', true );
-			wp_register_style( 'mfm-admin-css', MFM_WP_URL . 'assets/css/mfm-admin-css.css', false, '1.0.0' );
+
+			/**
+			 * Scripts
+			 */
+			// Only load scan manager on the main file monitor admin page (single site and multisite).
+			if ( in_array( $screen->base, $our_slugs, true ) ) {
+				wp_enqueue_script( 'mfm-scan-manager-js', MFM_WP_URL . 'assets/js/mfm-scan-manager.js', array( 'jquery' ), MFM_WP_VERSION, true );
+			}
+
+			wp_enqueue_script( 'mfm-admin-js', MFM_WP_URL . 'assets/js/mfm-admin.js', array( 'jquery' ), MFM_WP_VERSION, true );
+
+			/**
+			 * Styles
+			 */
+			wp_register_style( 'mfm-admin-css', MFM_WP_URL . 'assets/css/mfm-admin-css.css', array(), '1.0.0' );
 			wp_enqueue_style( 'mfm-admin-css' );
-	
-			wp_localize_script( 'wsal-admin-js', 'mfmJSData', $data_array );
+
+			wp_localize_script( 'mfm-admin-js', 'mfmJSData', $data_array );
 		}
 	}
 
@@ -425,7 +439,16 @@ class Admin_Manager {
 							<?php
 					}
 
-					if ( ! empty( $items ) && '' !== $file_array[0] ) {
+					/**
+					 * Scan-only event types are purely timestamps with no file data, so let's skip rendering
+					 * the file list container to avoid showing a redundant "Empty directory" box.
+					 *
+					 * Scan-only event types are labelled in Events_Helper::get_event_label_array()
+					 */
+					$scan_only_events = array( 'file-scan-started', 'file-scan-complete', 'file-scan-aborted' );
+
+					// Only render file list if there are items to show, the first item in the array is not empty, and the event type is not a scan-only event.
+					if ( ! empty( $items ) && '' !== $file_array[0] && ! empty( \maybe_unserialize( $file_array[0] ) ) && ! in_array( $event['event_type'], $scan_only_events, true ) ) {
 						?>
 							<div class="mfm_event_item_file_list_container">
 								<div class="mfm_event_item_file_list_wrapper">
@@ -497,6 +520,8 @@ class Admin_Manager {
 				Settings_Helper::clear_scan_schedule();
 			}
 		}
+
+		wp_clear_scheduled_hook( Cron_Handler::$schedule_hook );
 
 		foreach ( array_keys( $expected ) as $expected_key ) {
 			if ( isset( $posted[ $expected_key ] ) ) {

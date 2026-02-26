@@ -179,12 +179,15 @@ class Settings_Helper {
 	 * @since 2.0.0
 	 */
 	public static function get_settings_default_value( $setting_key ) {
-		$content_dir                 = trailingslashit( WP_CONTENT_DIR );
+		$content_dir = trailingslashit( WP_CONTENT_DIR );
+
 		$default_excluded_dirs       = array( $content_dir . 'cache', $content_dir . 'upgrade' );
 		$default_excluded_extensions = array( 'pdf', 'jpg', 'jpeg', 'png', 'bmp', 'txt', 'log', 'mo', 'po', 'mp3', 'wav', 'gif', 'ico', 'jpe', 'psd', 'raw', 'svg', 'tif', 'tiff', 'aif', 'flac', 'm4a', 'oga', 'ogg', 'ra', 'wma', 'asf', 'avi', 'mkv', 'mov', 'mp4', 'mpe', 'mpeg', 'mpg', 'ogv', 'qt', 'rm', 'vob', 'webm', 'wm', 'wmv', 'json', 'DS_Store' );
 		$default_excluded_files      = array( 'wp-config-sample.php' );
-		$base_paths_to_scan          = Directory_And_File_Helpers::get_directories_from_path( ABSPATH );
-		$base_paths_to_scan          = array_push( $base_paths_to_scan, ABSPATH );
+
+		// Get all immediate subdirectories of ABSPATH, then append ABSPATH itself so all root-level paths are scanned.
+		$base_paths_to_scan   = Directory_And_File_Helpers::get_directories_from_path( ABSPATH );
+		$base_paths_to_scan[] = ABSPATH;
 
 		$defaults = array(
 			'logging-enabled'              => 'yes',
@@ -198,7 +201,6 @@ class Settings_Helper {
 			'excluded_directories'         => $default_excluded_dirs,
 			'ignored_directories'          => array(),
 			'excluded_files'               => $default_excluded_files,
-			'allowed-in-core-dirs'         => array(),
 			'allowed-in-core-files'        => array(
 				'wp-config.php',
 				'.htaccess',
@@ -255,7 +257,6 @@ class Settings_Helper {
 			'excluded_directories'         => self::get_setting( 'excluded_directories', self::get_settings_default_value( 'excluded_directories' ) ),
 			'ignored_directories'          => self::get_setting( 'ignored_directories', self::get_settings_default_value( 'ignored_directories' ) ),
 			'excluded_files'               => self::get_setting( 'excluded_files', self::get_settings_default_value( 'excluded_files' ) ),
-			'allowed-in-core-dirs'         => self::get_setting( 'allowed-in-core-dirs', self::get_settings_default_value( 'allowed-in-core-dirs' ) ),
 			'allowed-in-core-files'        => self::get_setting( 'allowed-in-core-files', self::get_settings_default_value( 'allowed-in-core-files' ) ),
 			'enabled-notifications'        => self::get_setting( 'enabled-notifications', self::get_settings_default_value( 'enabled-notifications' ) ),
 			'email_notice_type'            => self::get_setting( 'email_notice_type', self::get_settings_default_value( 'scan-frequency' ) ),
@@ -578,8 +579,7 @@ class Settings_Helper {
 	 * @since 2.1.1
 	 */
 	public static function sanitize_search_input( $filename ) {
-		$filename_raw = $filename;
-		$filename     = remove_accents( $filename );
+		$filename = remove_accents( $filename );
 
 		$special_chars = array( '?', '[', ']', '\\', '=', '<', '>', ':', ';', ',', "'", '"', '&', '$', '#', '*', '(', ')', '|', '~', '`', '!', '{', '}', '%', '+', '’', '«', '»', '”', '“', chr( 0 ) );
 
@@ -590,10 +590,16 @@ class Settings_Helper {
 			$utf8_pcre = @preg_match( '/^./u', 'a' );
 		}
 
-		if ( ! seems_utf8( $filename ) ) {
+		if ( function_exists( 'wp_is_valid_utf8' ) ) {
+			$is_valid_utf8 = \wp_is_valid_utf8( $filename );
+		} else {
+			$is_valid_utf8 = \seems_utf8( $filename );
+		}
+
+		if ( ! $is_valid_utf8 ) {
 			$_ext     = pathinfo( $filename, PATHINFO_EXTENSION );
 			$_name    = pathinfo( $filename, PATHINFO_FILENAME );
-			$filename = sanitize_title_with_dashes( $_name ) . '.' . $_ext;
+			$filename = \sanitize_title_with_dashes( $_name ) . '.' . $_ext;
 		}
 
 		if ( $utf8_pcre ) {
@@ -667,7 +673,8 @@ class Settings_Helper {
 	 */
 	public static function convert_to_day_string( $day_num ) {
 		// Scan days option.
-		$day_key   = (int) $day_num - 1;
+		$day_key = (int) $day_num - 1;
+
 		$scan_days = array(
 			'Monday',
 			'Tuesday',
@@ -677,7 +684,8 @@ class Settings_Helper {
 			'Saturday',
 			'Sunday',
 		);
-		// Return a day string - uses day 1 = Monday by default.
-		return ( isset( $scan_days[ $day_key ] ) ) ? $scan_days[ $day_key ] : $scan_days[1];
+
+		// Return a day string - falls back to Monday (index 0) for out-of-range input.
+		return ( isset( $scan_days[ $day_key ] ) ) ? $scan_days[ $day_key ] : $scan_days[0];
 	}
 }

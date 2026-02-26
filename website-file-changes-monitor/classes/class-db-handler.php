@@ -15,13 +15,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use MFM\Helpers\Directory_And_File_Helpers;
-use MFM\Helpers\Settings_Helper;
-use MFM\Admin\AJAX_Tasks;
-use MFM\Scan_Status_Monitor;
 use MFM\Helpers\Logger;
+use MFM\Admin\AJAX_Tasks;
+use MFM\Crons\Cron_Handler;
+use MFM\Scan_Status_Monitor;
+use MFM\Helpers\Settings_Helper;
 use MFM\Plugins_And_Themes_Monitor;
-use Phpfastcache\CacheManager;
+use MFM\Helpers\Directory_And_File_Helpers;
 
 /**
  * Main DB class.
@@ -216,7 +216,7 @@ class DB_Handler {
 	 * Insert data into given table.
 	 *
 	 * @param string $table_to_insert_to - Destination.
-	 * @param string $data_to_insert - Data.
+	 * @param array  $data_to_insert - Data.
 	 *
 	 * @return int - Resulting ID.
 	 *
@@ -455,96 +455,209 @@ class DB_Handler {
 	}
 
 	/**
-	 * Compare incoming path and its hashes to what we have stored.
+	 * Compare stored file data against current scan data to detect changes.
 	 *
-	 * @param string $path - File path.
-	 * @param string $hash - Dir hash.
-	 * @param array  $file_paths - Paths.
-	 * @param array  $file_hashes - Hashes.
-	 * @param array  $file_permissions - Permissions.
+	 * Detects: added, removed, modified, renamed, and permissions-changed files.
+	 * Called once per directory from File_Comparison_Runner::task().
 	 *
-	 * @return array - Found differences.
+	 * @param string $directory_path            - Absolute directory path (e.g. /var/www/html/wp-content/themes).
+	 * @param string $current_data_hash         - Hash of the current scan data for this directory.
+	 * @param array  $current_file_paths        - Current scan relative file paths with filename (e.g. wp-content/themes/index.php).
+	 * @param array  $current_file_hashes       - Current scan file hashes (parallel to paths).
+	 * @param array  $current_file_permissions  - Current scan file permissions (parallel to paths).
+	 *
+	 * @return array - Example: array( 'added' => array( 'wp-content/file.php' ), 'modified' => array( 'index.php' ) ).
 	 *
 	 * @since 2.0.0
+	 * @since 2.3.0 - refactored to fix a bunch of issues and optimize for large directories.
 	 */
-	public static function compare_file_changes( $path, $hash, $file_paths, $file_hashes, $file_permissions ) {
+	public static function compare_file_changes( $directory_path, $current_data_hash, $current_file_paths, $current_file_hashes, $current_file_permissions ) {
 
-		if ( is_link( $path ) || Directory_And_File_Helpers::is_path_excluded( $path ) ) {
-			return array();
-		}
-
-		$current_id = get_site_option( MFM_PREFIX . 'active_scan_id' );
-
-		if ( self::was_event_reported( $path, $current_id ) ) {
-			$msg  = Logger::get_log_timestamp() . ' PATH WAS REPORTED, SKIPPING' . " \n";
-			$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
-			Logger::write_to_log( $msg );
+		// Exit early if path is a symbolic link (to avoid endless loops) or if it's an excluded/ignored path.
+		if ( is_link( $directory_path ) || Directory_And_File_Helpers::is_path_excluded( $directory_path ) || Directory_And_File_Helpers::is_path_ignored( $directory_path ) ) {
 			return array();
 		}
 
 		global $wpdb;
-		$stored_files       = $wpdb->prefix . self::$stored_files_table_name;
-		$file_changes_found = array();
+		$stored_files_table = $wpdb->prefix . self::$stored_files_table_name;
 
-		$found = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s WHERE path = %s AND data_hash != %s', $stored_files, $path, $hash ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+		/**
+		 * Each row in mfm_stored_files represents a directory (not a single file).
+		 * Fetch only data_hash first: if unchanged we skip loading the full row
+		 * (which contains serialized arrays of every file inside the directory).
+		 */
+		$stored_hash_row_of_folder = $wpdb->get_row( $wpdb->prepare( 'SELECT data_hash FROM %1s WHERE path = %s', $stored_files_table, $directory_path ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
 
-		if ( isset( $found[0] ) ) {
-			$found_file_paths_array       = maybe_unserialize( $found[0]['file_paths'] );
-			$file_paths_array             = maybe_unserialize( $file_paths );
-			$found_file_hashes_array      = maybe_unserialize( $found[0]['file_hashes'] );
-			$file_hashes_array            = maybe_unserialize( $file_hashes );
-			$found_file_permissions_array = maybe_unserialize( $found[0]['file_permissions'] );
-			$file_permissions_array       = maybe_unserialize( $file_permissions );
-			$core_files                   = Directory_And_File_Helpers::create_core_file_keys( true, false );
+		if ( null === $stored_hash_row_of_folder ) {
+			/**
+			 * No baseline row for this directory: MFM has never scanned it before.
+			 * Treat every file currently inside it as newly added.
+			 */
+			$current_file_paths_array = is_array( $current_file_paths ) ? $current_file_paths : \maybe_unserialize( $current_file_paths );
 
-			$index = 0;
-			foreach ( $found_file_paths_array as $path ) {
-				if ( ! Directory_And_File_Helpers::should_file_check_continue( $path, true ) ) {
-					continue;
-				}
-
-				$hash_lookup         = array_search( $path, $found_file_paths_array, true );
-				$current_hash_lookup = array_search( $path, $file_paths_array, true );
-				$core_check          = array_search( ltrim( $path, '/' ), $core_files, true );
-
-				if ( ! in_array( $path, $file_paths_array, true ) ) {
-					if ( ! is_file( ABSPATH . $path ) ) {
-						$file_changes_found['removed'][] = $path;
-					} elseif ( in_array( $file_hashes_array[ $index ], $found_file_hashes_array, true ) ) {
-						$file_changes_found['renamed'][]          = $path;
-						$file_changes_found['renamed-old-path'][] = $path;
-					}
-				} elseif ( ! $core_check && isset( $found_file_hashes_array[ $hash_lookup ] ) && isset( $file_hashes_array[ $current_hash_lookup ] ) && $found_file_hashes_array[ $hash_lookup ] !== $file_hashes_array[ $current_hash_lookup ] ) {
-					if ( ! empty( $found_file_permissions_array[ $hash_lookup ] ) && ! empty( $file_permissions_array[ $current_hash_lookup ] ) && $found_file_permissions_array[ $hash_lookup ] !== $file_permissions_array[ $current_hash_lookup ] ) {
-						$file_changes_found['permissions_changed'][] = $path . ' (' . esc_html__( 'Previous: ', 'website-file-changes-monitor' ) . '<b>' . $found_file_permissions_array[ $hash_lookup ] . '</b>' . ' ' . esc_html__( 'Current: ', 'website-file-changes-monitor' ) . '<b>' . $file_permissions_array[ $current_hash_lookup ] . '</b>' . ')'; // phpcs:ignore Generic.Strings.UnnecessaryStringConcat.Found
-					}
-					$file_changes_found['modified'][] = $path;
-				} elseif ( isset( $found_file_permissions_array[ $hash_lookup ] ) && isset( $file_permissions_array[ $current_hash_lookup ] ) && ! empty( $found_file_permissions_array[ $hash_lookup ] ) && ! empty( $file_permissions_array[ $current_hash_lookup ] ) && $found_file_permissions_array[ $hash_lookup ] !== $file_permissions_array[ $current_hash_lookup ] ) {
-					$file_changes_found['permissions_changed'][] = $path . ' (' . esc_html__( 'Previous: ', 'website-file-changes-monitor' ) . '<b>' . $found_file_permissions_array[ $hash_lookup ] . '</b>' . ' ' . esc_html__( 'Current: ', 'website-file-changes-monitor' ) . '<b>' . $file_permissions_array[ $current_hash_lookup ] . '</b>' . ')'; // phpcs:ignore Generic.Strings.UnnecessaryStringConcat.Found
-				}
-
-				++$index;
+			// If not an array, return early to avoid warnings or errors.
+			if ( ! is_array( $current_file_paths_array ) ) {
+				return array();
 			}
 
-			$index = 0;
-			foreach ( $file_paths_array as $path ) {
-				if ( ! Directory_And_File_Helpers::should_file_check_continue( $path ) ) {
-					continue;
-				}
+			$file_changes_found = array();
 
-				if ( ! in_array( $path, $found_file_paths_array, true ) ) {
-					$file_changes_found['added'][] = $path;
-				} elseif ( isset( $found_file_hashes_array[ $index ] ) && $found_file_hashes_array[ $index ] !== $file_hashes_array[ $index ] ) {
-					continue;
-				} elseif ( in_array( $file_hashes_array[ $index ], $found_file_hashes_array, true ) ) {
-					if ( isset( $file_changes_found['renamed'] ) && ! empty( $file_changes_found['renamed'] ) && ! in_array( $path, $file_changes_found['renamed'], true ) ) {
-						if ( ! in_array( $path, $found_file_paths_array, true ) ) {
-							$file_changes_found['renamed'][] = $path;
+			foreach ( $current_file_paths_array as $current_relative_file_path ) {
+				if ( Directory_And_File_Helpers::should_file_check_continue( $current_relative_file_path ) ) {
+					$file_changes_found['added'][] = $current_relative_file_path;
+				}
+			}
+
+			return $file_changes_found;
+		}
+
+		if ( $stored_hash_row_of_folder['data_hash'] === $current_data_hash ) {
+			// Directory is known and unchanged since last scan: nothing to report.
+			return array();
+		}
+
+		// Hash changed: fetch the full row now to compare file-level details.
+		$stored_directory_row = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s WHERE path = %s', $stored_files_table, $directory_path ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+
+		// Deserialize stored data from DB (serialized strings).
+		$stored_file_paths       = \maybe_unserialize( $stored_directory_row[0]['file_paths'] );
+		$stored_file_hashes      = \maybe_unserialize( $stored_directory_row[0]['file_hashes'] );
+		$stored_file_permissions = \maybe_unserialize( $stored_directory_row[0]['file_permissions'] );
+
+		// Current data arrives as arrays from the background process queue. Guard against double-serialization.
+		$current_file_paths_array       = is_array( $current_file_paths ) ? $current_file_paths : maybe_unserialize( $current_file_paths );
+		$current_file_hashes_array      = is_array( $current_file_hashes ) ? $current_file_hashes : maybe_unserialize( $current_file_hashes );
+		$current_file_permissions_array = is_array( $current_file_permissions ) ? $current_file_permissions : maybe_unserialize( $current_file_permissions );
+
+		/**
+		 * Build lookup maps. Use paths as index because they are unique and we avoid issues
+		 * that we would have with regular indexes: e.g. /var/www/html/wp-content/plugins
+		 * may be index 2 in one scan, and could be it's index 5 in another.
+		 */
+		$stored_path_to_index  = array_flip( $stored_file_paths );
+		$current_path_to_index = array_flip( $current_file_paths_array );
+
+		// Hash => list of paths with that hash (for rename detection).
+		$stored_hash_to_paths = array();
+
+		foreach ( $stored_file_paths as $i => $stored_path ) {
+			if ( isset( $stored_file_hashes[ $i ] ) ) {
+				$stored_hash_to_paths[ $stored_file_hashes[ $i ] ][] = $stored_path;
+			}
+		}
+
+		$current_hash_to_paths = array();
+
+		foreach ( $current_file_paths_array as $i => $current_path ) {
+			if ( isset( $current_file_hashes_array[ $i ] ) ) {
+				$current_hash_to_paths[ $current_file_hashes_array[ $i ] ][] = $current_path;
+			}
+		}
+
+		// Core files set for lookup.
+		$core_files_set        = array_flip( Directory_And_File_Helpers::create_core_file_keys( true, false ) );
+		$max_file_size_setting = Settings_Helper::get_setting_cached( 'max-file-size', 5 );
+
+		// 1048576 is 1MB in bytes (1024 × 1024). So it converts the setting (stored in MB) to bytes for comparison against filesize(), which returns bytes.
+		$file_size_limit_bytes = $max_file_size_setting * 1048576;
+
+		$file_changes_found = array();
+
+		/**
+		 * FIRST LOOP: Iterate stored file paths.
+		 * Detect: removed, renamed (old path), modified, permissions_changed.
+		 */
+		foreach ( $stored_file_paths as $stored_index => $stored_relative_file_path_with_name ) {
+
+			// Skip excluded files/extensions. Pass true for $is_check_on_removal since stored files may no longer exist on disk.
+			if ( ! Directory_And_File_Helpers::should_file_check_continue( $stored_relative_file_path_with_name, true ) ) {
+				continue;
+			}
+
+			// Skip files that exceed the size limit (only if the file still exists).
+			$absolute_file_path = ABSPATH . $stored_relative_file_path_with_name;
+
+			if ( is_file( $absolute_file_path ) && filesize( $absolute_file_path ) > $file_size_limit_bytes ) {
+				continue;
+			}
+
+			$file_exists_in_current_scan = isset( $current_path_to_index[ $stored_relative_file_path_with_name ] );
+
+			if ( ! $file_exists_in_current_scan ) {
+				// File path is gone from current scan.
+				if ( ! is_file( $absolute_file_path ) ) {
+					// File no longer exists on disk: it was removed.
+					$file_changes_found['removed'][] = $stored_relative_file_path_with_name;
+				} else {
+					// File still exists but path is not in current scan. Check for rename via hash.
+					$stored_hash_for_this_file = $stored_file_hashes[ $stored_index ] ?? null;
+
+					if ( $stored_hash_for_this_file && isset( $current_hash_to_paths[ $stored_hash_for_this_file ] ) ) {
+						$file_changes_found['renamed'][] = $stored_relative_file_path_with_name;
+					}
+				}
+				continue;
+			}
+
+			// File exists in both stored and current scans. Compare hashes and permissions.
+			$current_index_for_this_file = $current_path_to_index[ $stored_relative_file_path_with_name ];
+
+			$stored_hash_for_this_file  = $stored_file_hashes[ $stored_index ] ?? null;
+			$current_hash_for_this_file = $current_file_hashes_array[ $current_index_for_this_file ] ?? null;
+
+			$stored_permission_for_this_file  = $stored_file_permissions[ $stored_index ] ?? null;
+			$current_permission_for_this_file = $current_file_permissions_array[ $current_index_for_this_file ] ?? null;
+
+			$is_core_file       = isset( $core_files_set[ ltrim( $stored_relative_file_path_with_name, '/' ) ] );
+			$hash_changed       = ( null !== $stored_hash_for_this_file && null !== $current_hash_for_this_file && $stored_hash_for_this_file !== $current_hash_for_this_file );
+			$permission_changed = ( ! empty( $stored_permission_for_this_file ) && ! empty( $current_permission_for_this_file ) && $stored_permission_for_this_file !== $current_permission_for_this_file );
+
+			if ( ! $is_core_file && $hash_changed ) {
+				$file_changes_found['modified'][] = $stored_relative_file_path_with_name;
+			}
+
+			if ( $permission_changed ) {
+				$file_changes_found['permissions_changed'][] = array(
+					'file'     => $stored_relative_file_path_with_name,
+					'previous' => $stored_permission_for_this_file,
+					'current'  => $current_permission_for_this_file,
+				);
+			}
+		}
+
+		/**
+		 * SECOND LOOP: Iterate current file paths.
+		 * Detect: added, renamed (new path).
+		 */
+		foreach ( $current_file_paths_array as $current_index => $current_relative_file_path_with_name ) {
+
+			if ( ! Directory_And_File_Helpers::should_file_check_continue( $current_relative_file_path_with_name ) ) {
+				continue;
+			}
+
+			$file_existed_in_stored_scan = isset( $stored_path_to_index[ $current_relative_file_path_with_name ] );
+
+			if ( ! $file_existed_in_stored_scan ) {
+				// New path not in stored scan. Check if it's the new-name side of a rename.
+				$current_hash_for_this_file = $current_file_hashes_array[ $current_index ] ?? null;
+
+				$is_rename_new_path = false;
+
+				if ( $current_hash_for_this_file && isset( $stored_hash_to_paths[ $current_hash_for_this_file ] ) ) {
+					// Same hash existed in stored scan. Verify old path is gone from current scan (true rename).
+					foreach ( $stored_hash_to_paths[ $current_hash_for_this_file ] as $old_path_with_same_hash ) {
+						if ( ! isset( $current_path_to_index[ $old_path_with_same_hash ] ) ) {
+							$is_rename_new_path = true;
+							break;
 						}
 					}
 				}
 
-				++$index;
+				if ( $is_rename_new_path ) {
+					$file_changes_found['renamed'][] = $current_relative_file_path_with_name;
+				} else {
+					$file_changes_found['added'][] = $current_relative_file_path_with_name;
+				}
 			}
 		}
 
@@ -556,7 +669,7 @@ class DB_Handler {
 	 *
 	 * @param array $data - Incoming data.
 	 * @param bool  $update_if_found - Update.
-	 * @param bool  $skip_cleaning - Skip cleanind data.
+	 * @param bool  $skip_cleaning - Skip cleaning data.
 	 *
 	 * @return $insert_id - Event ID.
 	 *
@@ -596,37 +709,64 @@ class DB_Handler {
 	}
 
 	/**
-	 * Remove items we dont which to have present in an event.
+	 * Filters out files with excluded extensions from scan event data before it gets stored in the database.
 	 *
-	 * @param array $data - Input data to clean.
+	 * @param string $data - Serialized event file data to clean.
 	 *
-	 * @return array $return_data
+	 * @return string Serialized cleaned data.
 	 *
 	 * @since 2.1.0
+	 * @since 2.3.0 - Refactored to handle various data formats and edge cases.
 	 */
-	public static function clean_event_file_data( $data ) {
+	public static function clean_event_file_data( $data ): string {
 		$return_data = array();
 
 		if ( ! $data ) {
-			return $data;
+			return \maybe_serialize( array() );
 		}
 
 		$excluded_file_extensions = Settings_Helper::get_setting_cached( 'excluded_file_extensions' );
-		$excluded_file_extensions = ( is_array( $excluded_file_extensions ) ) ? $excluded_file_extensions : array();
 
-		$data = maybe_unserialize( $data );
+		$excluded_file_extensions = is_array( $excluded_file_extensions ) ? $excluded_file_extensions : array();
+
+		$data = \maybe_unserialize( $data );
+
+		if ( ! is_array( $data ) ) {
+			return maybe_serialize( array() );
+		}
 
 		foreach ( $data as $type => $files ) {
+
+			if ( ! is_array( $files ) ) {
+				continue;
+			}
+
 			foreach ( $files as $file ) {
-				$file_extension = ( $file && ! empty( (string) $file ) ) ? substr( (string) strrchr( (string) $file, '.' ), 1 ) : false;
+				if ( is_array( $file ) && isset( $file['file'] ) ) {
+					$file_path_check = (string) $file['file'];
+				} else {
+					$file_path_check = (string) $file;
+				}
+
+				$file_extension = false;
+
+				if ( $file_path_check && ! empty( $file_path_check ) ) {
+					$dot_position = strrchr( $file_path_check, '.' );
+
+					if ( false !== $dot_position ) {
+						$file_extension = substr( $dot_position, 1 );
+					}
+				}
+
 				if ( $file_extension && in_array( $file_extension, $excluded_file_extensions, true ) ) {
 					continue;
 				}
+
 				$return_data[ $type ][] = $file;
 			}
 		}
 
-		return maybe_serialize( $return_data );
+		return \maybe_serialize( $return_data );
 	}
 
 	/**
@@ -648,25 +788,28 @@ class DB_Handler {
 	 * Insert over spill into table
 	 *
 	 * @param array  $part_b - Data.
-	 * @param bool   $new_event - Is new.
+	 * @param int    $new_event_id - Event ID.
 	 * @param int    $current_id - Scan ID.
 	 * @param string $event_type - Event type.
 	 *
 	 * @return int - Result ID.
 	 *
 	 * @since 2.0.0
+	 * @since 2.3.0 Replaced raw string concatenation with $wpdb->prepare() for values.
 	 */
-	public static function insert_event_metadata( $part_b, $new_event, $current_id, $event_type = 'removed' ) {
+	public static function insert_event_metadata( $part_b, $new_event_id, $current_id, $event_type = 'removed' ) {
 		global $wpdb;
 		$metadata_table_name = $wpdb->prefix . self::$events_meta_table_name;
-		$data_string         = '';
+
+		$values = array();
 
 		foreach ( $part_b as $item => $val ) {
-			$data_string .= '("' . $new_event . '", "' . $event_type . '", "' . $val . '", "' . $current_id . '"),';
+			$values[] = $wpdb->prepare( '(%d, %s, %s, %d)', (int) $new_event_id, $event_type, $val, (int) $current_id );
 		}
 
-		$data_string  = trim( $data_string, ',' ) . ';';
-		$setting_save = $wpdb->query( "INSERT INTO $metadata_table_name ( event_id, event_type, data, scan_run_id ) VALUES " . $data_string ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$values_string = implode( ', ', $values );
+
+		$setting_save = $wpdb->query( $wpdb->prepare( 'INSERT INTO %1s ( event_id, event_type, data, scan_run_id ) VALUES ', $metadata_table_name ) . $values_string ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
 
 		return $setting_save;
 	}
@@ -769,23 +912,20 @@ class DB_Handler {
 	}
 
 	/**
-	 * Remove all data on uninstall.
+	 * Remove all data on deactivation.
 	 *
 	 * @return void
 	 *
 	 * @since 2.0.0
+	 * @since 2.3.0 Fixed issue where wp_cron was not removed on plugin deactivation or full uninstall.
 	 */
-	public static function uninstall() {
+	public static function on_mfm_deactivation() {
+		// Clear monitor_file_changes wp_cron in case it is still scheduled.
+		wp_clear_scheduled_hook( Cron_Handler::$schedule_hook );
+
 		$needed = get_site_option( MFM_PREFIX . 'delete-data-enabled' );
 
 		if ( 'yes' === $needed ) {
-			global $wpdb;
-			$cron_hook_identifiers = array( MFM_PREFIX . 'monitor_file_changes' );
-
-			foreach ( $cron_hook_identifiers as $cron_hook_identifier ) {
-				wp_clear_scheduled_hook( $wpdb->prefix . $cron_hook_identifier );
-			}
-
 			AJAX_Tasks::purge_data( true );
 		}
 	}
@@ -799,10 +939,21 @@ class DB_Handler {
 	 */
 	public static function cancel_current_scan() {
 
-		\MFM::$dir_runner->delete_all();
-		\MFM::$file_runner->delete_all();
-		\MFM::$file_comparison_runner->delete_all();
-		\MFM::$core_runner->delete_all();
+		if ( method_exists( \MFM::$dir_runner, 'delete_all' ) ) {
+			\MFM::$dir_runner->delete_all();
+		}
+
+		if ( method_exists( \MFM::$file_runner, 'delete_all' ) ) {
+			\MFM::$file_runner->delete_all();
+		}
+
+		if ( method_exists( \MFM::$file_comparison_runner, 'delete_all' ) ) {
+			\MFM::$file_comparison_runner->delete_all();
+		}
+
+		if ( method_exists( \MFM::$core_runner, 'delete_all' ) ) {
+			\MFM::$core_runner->delete_all();
+		}
 
 		self::delete_from_options( wp_create_nonce( MFM_PREFIX . 'delete_data' ), '%_runner_%' );
 
@@ -912,14 +1063,6 @@ class DB_Handler {
 			$sql .= $wpdb->prepare( ' LIMIT %d OFFSET %d', $limit, $offset );
 		}
 
-		// $events_cache = wp_cache_get( MFM_PREFIX . 'events_cache' );
-		// if ( ! $events_cache || empty( $events_cache ) ) {
-		// 	$events = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
-		// 	wp_cache_set( MFM_PREFIX . 'events_cache', $events, '', HOUR_IN_SECONDS );
-		// } else {
-		// 	$events = $events_cache;
-		// }
-
 		$events = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
 
 		return ( $return_count ) ? count( $events ) : $events;
@@ -964,24 +1107,37 @@ class DB_Handler {
 	 * @return array - Results.
 	 *
 	 * @since 2.0.0
+	 * @since 2.3.0 Use $wpdb->esc_like() and $wpdb->prepare() for LIKE clauses. Map UI notification type values to their corresponding DB event type substrings.
 	 */
-	public static function get_events_for_specific_run( $scan_run_id, $event_types_wanted ) {
+	public static function get_events_for_specific_run( $scan_run_id, $event_types_wanted ): array {
+
+		if ( empty( $event_types_wanted ) || ! is_array( $event_types_wanted ) ) {
+			return array();
+		}
+
 		global $wpdb;
+
 		$table_name = $wpdb->prefix . self::$events_table_name;
 		$sql        = $wpdb->prepare( 'SELECT * FROM %1s', $table_name ); // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
 		$sql       .= $wpdb->prepare( ' WHERE scan_run_id = %s', $scan_run_id );
 		$sql       .= $wpdb->prepare( ' AND data != %s', '' );
 
-		$event_types_wanted = array_map(
-			function ( $v ) {
-				return '"%' . esc_sql( $v ) . '%"';
-			},
-			$event_types_wanted
+		$like_clauses = array();
+
+		$type_map = array(
+			'deleted'             => 'removed',
+			'permissions_changed' => 'permissions-changed',
 		);
 
-		$event_types_wanted = implode( ' OR event_type LIKE ', $event_types_wanted );
-		$sql               .= ' AND event_type LIKE ' . $event_types_wanted . '';
-		$bg_jobs            = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholderd
+		foreach ( $event_types_wanted as $v ) {
+			$v = $type_map[ $v ] ?? $v;
+
+			$like_clauses[] = $wpdb->prepare( 'event_type LIKE %s', '%' . $wpdb->esc_like( $v ) . '%' );
+		}
+
+		$sql .= ' AND (' . implode( ' OR ', $like_clauses ) . ')';
+
+		$bg_jobs = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
 
 		return $bg_jobs;
 	}
@@ -1034,12 +1190,13 @@ class DB_Handler {
 	 * @param string $table_name - Target table.
 	 * @param string $lookup - lookup.
 	 * @param string $target - Like target.
+	 * @param bool   $target_is_string - Handle string targets.
 	 *
 	 * @return void
 	 *
 	 * @since 2.0.0
 	 */
-	public static function delete_from_where( $nonce, $table_name, $lookup, $target ) {
+	public static function delete_from_where( $nonce, $table_name, $lookup, $target, $target_is_string = false ) {
 		if ( ! wp_verify_nonce( $nonce, MFM_PREFIX . 'delete_data' ) || empty( $table_name ) ) {
 			return;
 		}
@@ -1050,7 +1207,13 @@ class DB_Handler {
 		}
 
 		global $wpdb;
-		$wpdb->get_results( $wpdb->prepare( 'DELETE FROM %1s WHERE %2s = %3d', $wpdb->prefix . $table_name, $lookup, $target ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+		$statement = $wpdb->prepare( 'DELETE FROM %1s WHERE %2s = %3d', $wpdb->prefix . $table_name, $lookup, $target ); // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+
+		if ( $target_is_string ) {
+			$statement = $wpdb->prepare( "DELETE FROM %1s WHERE `%2s` = '%3s'", $wpdb->prefix . $table_name, $lookup, $target ); // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+		}
+
+		$wpdb->get_results( $statement ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	}
 
 	/**
@@ -1080,7 +1243,44 @@ class DB_Handler {
 	}
 
 	/**
-	 * Dump table.
+	 * Delete MFM-specific directories from the uploads folder.
+	 *
+	 * Paths are hard-coded to prevent accidental deletion of unrelated directories.
+	 *
+	 * @return void
+	 *
+	 * @since 2.3.0
+	 */
+	private static function delete_mfm_directories() {
+		$mfm_directories = array(
+			MFM_UPLOADS_DIR . MFM_LOGS_DIR,
+			MFM_UPLOADS_DIR . 'melapress-file-monitor',
+		);
+
+		global $wp_filesystem;
+
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+
+		if ( empty( $wp_filesystem ) ) {
+			$result = \WP_Filesystem();
+
+			// WP_Filesystem() can fail without setting $wp_filesystem: guard against fatal errors on ->delete().
+			if ( false === $result || empty( $wp_filesystem ) ) {
+				return;
+			}
+		}
+
+		foreach ( $mfm_directories as $dir ) {
+			if ( is_dir( $dir ) ) {
+				$wp_filesystem->delete( $dir, true );
+			}
+		}
+	}
+
+	/**
+	 * Drop a plugin database table.
 	 *
 	 * @param string $table_name - Target table.
 	 *
@@ -1152,6 +1352,9 @@ class DB_Handler {
 		foreach ( $plugin_options as $option ) {
 			delete_option( $option->option_name );
 		}
+
+		// Clean up any file system folders created by MFM.
+		self::delete_mfm_directories();
 	}
 
 	/**
@@ -1177,7 +1380,6 @@ class DB_Handler {
 			self::$events_table_name,
 			'wfcm_file_events',
 		);
-
 		return in_array( $name_to_check, $allowed_names, true );
 	}
 
@@ -1261,12 +1463,13 @@ class DB_Handler {
 	 * @return array
 	 *
 	 * @since 2.1.0
+	 * @since 2.3.0 Use $wpdb->prepare() for both table names.
 	 */
 	private static function get_paths_not_in_table( $table_a, $table_b ) {
 		global $wpdb;
 		$table_a = $wpdb->prefix . $table_a;
 		$table_b = $wpdb->prefix . $table_b;
-		$data    = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table_a} WHERE path NOT IN (SELECT path FROM  %1s );", $table_b ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+		$data    = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s WHERE path NOT IN (SELECT path FROM %1s)', $table_a, $table_b ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
 		return $data;
 	}
 
@@ -1278,11 +1481,16 @@ class DB_Handler {
 	 * @return array
 	 *
 	 * @since 2.1.0
+	 * @since 2.3.0 Use $wpdb->prepare() and $wpdb->esc_like() to prevent SQL injection.
 	 */
 	public static function lookup_event( $lookup ) {
 		global $wpdb;
+
 		$table_name = $wpdb->prefix . self::$events_table_name;
-		$found      = $wpdb->get_results( 'SELECT * FROM ' . $table_name . " WHERE path LIKE '%" . $lookup . "%' OR data LIKE '%" . $lookup . "%'", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$like       = '%' . $wpdb->esc_like( $lookup ) . '%';
+
+		$found = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s WHERE path LIKE %s OR data LIKE %s', $table_name, $like, $like ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+
 		return $found;
 	}
 
@@ -1297,8 +1505,15 @@ class DB_Handler {
 	 */
 	public static function get_stored_files_by_path( $path ) {
 		global $wpdb;
+
 		$stored_files = $wpdb->prefix . self::$stored_files_table_name;
-		$found        = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s WHERE path = %s', $stored_files, $path ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+
+		/**
+		 * Safe to ignore UnquotedComplexPlaceholder: %1s is used intentionally for the table name,
+		 * which must not be quoted and is derived from a trusted source ($wpdb->prefix + class constant).
+		 */
+		$found = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s WHERE path = %s', $stored_files, $path ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+
 		return $found;
 	}
 
@@ -1310,22 +1525,38 @@ class DB_Handler {
 	 * @return void
 	 *
 	 * @since 2.0.0
+	 * @since 2.3.0 Use $wpdb->prepare() for table name references. Wrap cache operations in try-catch to handle corrupted cache files without fatal errors.
 	 */
 	public static function dump_into_db( $target_cache = 'directory_runner_cache' ) {
-		$obj_files_cache = CacheManager::getInstance( 'files' );
-		$current_cache   = $obj_files_cache->getItem( $target_cache );
-		$data            = $current_cache->get();
+		try {
+			$obj_files_cache = MFM_Fast_Cache::get_instance();
+			$current_cache   = $obj_files_cache->getItem( $target_cache );
+			$data            = $current_cache->get();
 
-		if ( ! is_null( $data ) ) {
-			$data = rtrim( $data, ',' ) . ';';
+			if ( ! is_null( $data ) ) {
+				$data = rtrim( $data, ',' );
 
-			global $wpdb;
-			$table_name = $wpdb->prefix . self::$scanned_directories_table_name;
+				global $wpdb;
 
-			$wpdb->query( "INSERT INTO $table_name ( path, time, permissions ) VALUES " . $data ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->query( "DELETE t1 FROM $table_name t1, $table_name t2  WHERE t1.id < t2.id  AND t1.path = t2.path" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$table_name = $wpdb->prefix . self::$scanned_directories_table_name;
 
-			$obj_files_cache->clear();
+				// Bulk insert all scanned directories from the cache into the DB in a single query.
+				$wpdb->query( $wpdb->prepare( 'INSERT INTO %1s ( path, time, permissions ) VALUES ', $table_name ) . $data ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+
+				// Remove duplicate paths, keeping only the row with the highest ID (most recent entry).
+				$wpdb->query( $wpdb->prepare( 'DELETE t1 FROM %1s t1, %1s t2 WHERE t1.id < t2.id AND t1.path = t2.path', $table_name, $table_name ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+
+				$obj_files_cache->clear();
+			}
+		} catch ( \TypeError $e ) {
+			try {
+				MFM_Fast_Cache::get_instance()->clear();
+			} catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+				// Cache directory may already be gone, nothing to do.
+			}
+			Logger::write_to_log( Logger::get_log_timestamp() . ' Cache corruption detected in dump_into_db, cache pool cleared' );
+		} catch ( \Throwable $e ) {
+			Logger::write_to_log( Logger::get_log_timestamp() . ' Cache error in dump_into_db: ' . $e->getMessage() );
 		}
 	}
 
@@ -1345,14 +1576,14 @@ class DB_Handler {
 		$stored_directories_table_name  = $wpdb->prefix . self::$stored_directories_table_name;
 
 		if ( ! function_exists( '\maybe_add_column' ) ) {
-			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		}
 
 		if ( self::check_table_exists( $scanned_files_table_name ) ) {
 			$create_ddl = "ALTER TABLE $scanned_files_table_name ADD file_permissions TEXT NOT NULL";
 			\maybe_add_column( $scanned_files_table_name, 'file_permissions', $create_ddl );
 		}
-		
+
 		if ( self::check_table_exists( $stored_files_table_name ) ) {
 			$create_ddl = "ALTER TABLE $stored_files_table_name ADD file_permissions TEXT NOT NULL";
 			\maybe_add_column( $stored_files_table_name, 'file_permissions', $create_ddl );

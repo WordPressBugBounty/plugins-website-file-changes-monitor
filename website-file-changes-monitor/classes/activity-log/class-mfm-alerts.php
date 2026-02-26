@@ -32,8 +32,8 @@ if ( ! class_exists( '\WSAL\Custom_Alerts\MFM_Alerts' ) ) {
 		 */
 		public static function get_custom_alerts(): array {
 			return array(
-				esc_html__( 'Melapress File Manager', 'website-file-changes-monitor' ) => array(
-					esc_html__( 'Melapress File Manager Content', 'website-file-changes-monitor' ) => array(
+				esc_html__( 'Melapress File Monitor', 'website-file-changes-monitor' ) => array(
+					esc_html__( 'Melapress File Monitor Content', 'website-file-changes-monitor' ) => array(
 
 						array(
 							6030,

@@ -17,16 +17,8 @@ updateFrequencyVisibility();
 
 jQuery(document).ready(function() {
 
-	// Admin vars.
-	let eventCounter = 0;
-	let neweventsCounter = 0;
-	let initTimer;
-	let mainTimer;
-
 	// Events page.
 	if (document.querySelector("#mfm-file-scanning-controls") !== null) {
-
-
 
 		// Setup wizard.
 		if (document.querySelector("#mfm-setup-wizard") !== null) {
@@ -187,137 +179,6 @@ jQuery(document).ready(function() {
 
 		// Remove strays.
 		jQuery('.mfm_event_item_file_list_wrapper:empty').remove();
-
-		// Handle live updates.
-		const checkScanActive = document.querySelector('.mfm-scan-is-active');
-		if (checkScanActive) {
-			initTimer = setInterval( monitorScanStatus, 10000 );
-			monitorScanStatus();
-			jQuery( '#run_tool' ).attr( 'value',  mfmJSData.scanInProgressLabel ).addClass( 'disabled' );
-			
-		}
-
-		// Monitor ongoing scan.
-		function monitorScanStatus() {
-			fetch(
-				mfmJSData.status_route, {
-					Method: 'GET',
-				}).then(function(response) {
-				return response.json();
-			}).then(function(result) {
-				if (eventCounter == 0) {
-					eventCounter = result.current_events_count;
-				} else if (result.current_events_count > eventCounter) {
-					eventCounter = result.current_events_count;
-					jQuery("#mfm-events-wrap").load(location.href + " #mfm-events-wrap>*", "");
-					jQuery( '.mfm_event_item_file_list_wrapper:not(.list-show)' ).each(function( index, value ) {
-						if ( jQuery( this ).find( '.mfm-list-item' ).length < mfmJSData.expandListBelowAmount ) {
-							jQuery( this ).addClass( 'list-show' );
-						}
-					});
-					neweventsCounter = neweventsCounter + 1;
-				}
-
-				string = '';
-				jQuery.each(result, function(key, value) {
-					string += value + ' ';
-				});
-
-				if (result.status != 'scan_complete') {
-					jQuery('#data-readout').text(result.current_step + ' ' + mfmJSData.youMayContinue);
-					jQuery('#mfm_status_monitor_bar').slideDown(300);
-				} else {
-					jQuery( '#run_tool' ).attr( 'value',  mfmJSData.startScanLabel ).removeClass( 'disabled' );
-					clearInterval(initTimer);
-					clearInterval(mainTimer);
-					jQuery('#data-readout').text(result.current_step);
-					setTimeout(() => {
-						jQuery("#mfm-events-wrap").load(location.href + " #mfm-events-wrap>*", "");
-						jQuery( '.mfm_event_item_file_list_wrapper:not(.list-show)' ).each(function( index, value ) {
-							if ( jQuery( this ).find( '.mfm-list-item' ).length < mfmJSData.expandListBelowAmount ) {
-								jQuery( this ).addClass( 'list-show' );
-							}
-						});
-						if (!jQuery('body').hasClass('mfm-scan-init')) {
-							jQuery('#mfm_status_monitor_bar').slideUp(300);
-						}
-					}, 5000);
-
-					setTimeout(() => {
-						jQuery("#mfm-events-wrap").load(location.href + " #mfm-events-wrap>*", "");
-						jQuery( '.mfm_event_item_file_list_wrapper:not(.list-show)' ).each(function( index, value ) {
-							if ( jQuery( this ).find( '.mfm-list-item' ).length < mfmJSData.expandListBelowAmount ) {
-								jQuery( this ).addClass( 'list-show' );
-							}
-						});
-					}, 4000);
-				}
-			}).catch(function(error) {
-				//console.log( error );
-			});
-		}
-
-		// Start engines.
-		document.querySelector("#mfm-file-scanning-controls").addEventListener("submit", function(e) {
-			e.preventDefault();			
-			jQuery( '#run_tool' ).attr( 'value',  mfmJSData.scanInProgressLabel ).addClass( 'disabled' );
-
-			var formData = jQuery("#mfm-file-scanning-controls").serializeArray();
-			var eventNonce = jQuery('#run_tool').attr('data-nonce');
-			
-			jQuery('#data-readout').text( 'File Scan Initialising ' + mfmJSData.youMayContinue);
-			jQuery('#mfm_status_monitor_bar').slideDown(300);
-			jQuery('body').addClass('mfm-scan-init');
-			jQuery.ajax({
-				url: mfmJSData.ajaxURL,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'mfm_start_directory_runner',
-					form_data: formData,
-					nonce: eventNonce,
-				},
-				complete: function(data) {
-					mainTimer = setInterval(monitorScanStatus, 10000)
-					setTimeout(() => {
-						jQuery("#mfm-events-wrap").load(location.href + " #mfm-events-wrap>*", "");
-					}, 200);
-					setTimeout(() => {
-						jQuery('body').removeClass('mfm-scan-init');
-					}, 5000);
-				},
-			});
-		});
-
-		const targetNode = document.getElementById("mfm-events-wrap");
-
-		// Options for the observer (which mutations to observe)
-		const config = {
-			attributes: true,
-			childList: true,
-			subtree: true
-		};
-
-		// Callback function to execute when mutations are observed
-		const callback = (mutationList, observer) => {
-			for (const mutation of mutationList) {
-				if (mutation.type === "childList" && checkScanActive) {
-					count = 0;
-					var wrapperChildren = jQuery("#mfm-events-wrap").children();
-					for (var i = 0; i < wrapperChildren.length; i++) {
-						if (i < neweventsCounter) {
-							//jQuery(wrapperChildren[i]).addClass( 'fresh-event' );           
-						}
-					}
-				}
-			}
-		};
-
-		// Create an observer instance linked to the callback function
-		const observer = new MutationObserver(callback);
-
-		// Start observing the target node for configured mutations
-		observer.observe(targetNode, config);
 
 		// Events per-page input.
 		jQuery("#mfm-per-page-input input").bind('change', function(e) {
@@ -657,10 +518,12 @@ jQuery(document).ready(function() {
 
 		if ('' != newItemInput) {
 			let pattern = '';
-			if (targetList == 'excluded_directories' || targetList == 'ignored_directories' || targetList == 'excluded_files' || targetList == 'allowed-in-core-files') {
-				pattern = /^\s*[a-z-._\d,\s/]+\s*$/i;
+			if (targetList == 'excluded_directories' || targetList == 'ignored_directories') {
+				pattern = /^\s*[a-z-._\d/*?]+\s*$/i;
+			} else if (targetList == 'excluded_files' || targetList == 'allowed-in-core-files') {
+				pattern = /^\s*[a-z-._\d/]+\s*$/i;
 			} else if (targetList == 'excluded_file_extensions') {
-				pattern = /^\s*[a-z-._\d,\s]+\s*$/i;
+				pattern = /^\s*[a-z-._\d]+\s*$/i;
 			}
 			
 			var newItemInputLabel = newItemInput;

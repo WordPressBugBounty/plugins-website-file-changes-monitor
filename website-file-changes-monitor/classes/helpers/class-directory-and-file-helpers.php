@@ -16,8 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use MFM\DB_Handler;
-use MFM\Helpers\Settings_Helper;
 use MFM\Helpers\Logger;
+use MFM\Helpers\Settings_Helper;
 
 /**
  * Utility file and directory functions.
@@ -33,16 +33,17 @@ class Directory_And_File_Helpers {
 	 * @param  boolean $recursive - Is recursive.
 	 * @param  array   $filtered - Skip items.
 	 *
-	 * @return array - Results.
+	 * @return array - array of absolute, normalized directory paths (with forward slashes)
 	 *
 	 * @throws \RuntimeException - Error.
 	 *
 	 * @since 2.0.0
+	 * @since 2.3.0 - Normalized paths with wp_normalize_path() for consistent forward slashes on all OS.
 	 */
 	public static function get_directories_from_path( $path, $recursive = false, array $filtered = array() ) {
 
 		if ( ! is_dir( $path ) ) {
-			$msg = Logger::get_log_timestamp() . ' PATH DOES NOT EXIST' . " \n";
+			$msg  = Logger::get_log_timestamp() . ' PATH DOES NOT EXIST' . " \n";
 			$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
 			Logger::write_to_log( $msg );
 			return array();
@@ -55,24 +56,24 @@ class Directory_And_File_Helpers {
 		if ( false !== $d ) {
 			while ( ( $entry = $d->read() ) !== false ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 				if ( ! in_array( $entry, $filtered, true ) ) {
-					if ( is_dir( "$path/$entry" ) ) {
+					if ( is_dir( $path . DIRECTORY_SEPARATOR . $entry ) ) {
 
-						$depth = explode( '/', "$path/$entry" );
+						$depth = explode( DIRECTORY_SEPARATOR, $path . DIRECTORY_SEPARATOR . $entry );
 						$depth = count( $depth ) - 1;
 						if ( MFM_MAX_DEPTH < $depth ) {
-							$msg = Logger::get_log_timestamp() . ' PATH BEYOND DEPTH LIMIT' . " \n";
+							$msg  = Logger::get_log_timestamp() . ' PATH BEYOND DEPTH LIMIT' . " \n";
 							$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
 							Logger::write_to_log( $msg );
 							continue;
 						}
 
-						$path_name = realpath( $path . DIRECTORY_SEPARATOR . $entry );
+						$path_name = \wp_normalize_path( realpath( $path . DIRECTORY_SEPARATOR . $entry ) );
 						$dirs[]    = $path_name;
 
 						if ( $recursive ) {
-							$new_dirs = self::get_directories_from_path( "$path/$entry" );
+							$new_dirs = self::get_directories_from_path( $path . DIRECTORY_SEPARATOR . $entry );
 							foreach ( $new_dirs as $new_dir ) {
-								$dirs[] = "$entry/$new_dir";
+								$dirs[] = $entry . DIRECTORY_SEPARATOR . $new_dir;
 							}
 						}
 					}
@@ -89,37 +90,82 @@ class Directory_And_File_Helpers {
 	 * @param  string $root_dir - Gather files and store info.
 	 * @param  array  $file_data - Incoming data.
 	 *
-	 * @return array
+	 * @return array $file_data - Associative array with keys 'paths', 'hashs', 'timestamps', 'permissions', each containing indexed arrays of file data.
 	 *
 	 * @since 2.0.0
+	 * @since 2.3.0 - Added extension exclusion to avoid storing files of excluded extensions and files with no extension, depending on settings. Normalized paths with wp_normalize_path() for consistent forward slashes on all OS.
 	 */
-	public static function scan_and_store_files( $root_dir, $file_data = array() ) {
+	public static function scan_and_store_files( $root_dir, $file_data = array() ): array {
 		$invisible_file_names = array( '.', '..', '.htaccess', '.htpasswd' );
-		// run through content of root directory.
+		// Run through content of root directory.
 		$dir_content = scandir( $root_dir );
 
+		if ( ! is_array( $dir_content ) ) {
+			return $file_data;
+		}
+
 		$ignore_files = Settings_Helper::get_setting_cached( 'excluded_files' );
-		$ignore_files = ( is_array( $ignore_files ) ) ? $ignore_files : array();
+		$ignore_files = is_array( $ignore_files ) ? $ignore_files : array();
 
-		foreach ( $dir_content as $key => $content ) {
-			// filter all files not accessible.
-			$path = $root_dir . '/' . $content;
-			if ( ! in_array( $content, $invisible_file_names, true ) ) {
+		$excluded_file_extensions = Settings_Helper::get_setting_cached( 'excluded_file_extensions' );
+		$excluded_file_extensions = is_array( $excluded_file_extensions ) ? $excluded_file_extensions : array();
 
-				if ( is_file( $path ) && is_readable( $path ) ) {
-					if ( in_array( str_replace( ABSPATH, '', $path ), $ignore_files, true ) ) {
-						continue;
-					}
+		$scan_no_extension = 'yes' === Settings_Helper::get_setting_cached( 'scan-files-with-no-extension', 'yes' );
 
-					// save file name with path.
-					$file_data['paths'][]       = str_replace( ABSPATH, '', $path );
-					$file_data['hashs'][]       = md5_file( $path );
-					$file_data['timestamps'][]  = filemtime( $path );
-					$file_data['permissions'][] = substr( sprintf( "%o", fileperms( $path ) ), -4 );
+		// Convert max file size from MB to bytes for comparison against filesize(), which returns bytes.
+		$max_file_size_mb      = (int) Settings_Helper::get_setting_cached( 'max-file-size', 5 );
+		$file_size_limit_bytes = $max_file_size_mb * 1048576;
 
+		foreach ( $dir_content as $content ) {
+			if ( in_array( $content, $invisible_file_names, true ) ) {
+				continue;
+			}
+
+			// Check extension exclusions first (cheap string ops) before filesystem calls.
+			$file_extension = strrchr( $content, '.' );
+			$file_extension = ( false !== $file_extension ) ? substr( $file_extension, 1 ) : false;
+
+			// Check setting, are we scanning files with no extension? If not then skip.
+			if ( false === $file_extension && ! $scan_no_extension ) {
+				continue;
+			}
+
+			// Check if this file has an excluded extension, if yes, skip.
+			if ( false !== $file_extension && in_array( $file_extension, $excluded_file_extensions, true ) ) {
+				continue;
+			}
+
+			$path = \wp_normalize_path( $root_dir . DIRECTORY_SEPARATOR . $content );
+
+			if ( is_file( $path ) && is_readable( $path ) ) {
+				// Check if this file is in the list of specific files to ignore, if yes, skip.
+				if ( in_array( str_replace( ABSPATH, '', $path ), $ignore_files, true ) ) {
+					continue;
 				}
+
+				/**
+				 * Skip files that exceed the configured size limit.
+				 * Enforcing here means large files never enter the DB, so they
+				 * cannot trigger added/removed/modified events regardless of how they change.
+				 */
+				if ( filesize( $path ) > $file_size_limit_bytes ) {
+					$msg  = Logger::get_log_timestamp() . ' File limit exceeded:' . " \n";
+					$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
+
+					Logger::write_to_log( $msg );
+
+					\do_action( MFM_PREFIX . 'file_exceeded_size_event_created', str_replace( ABSPATH, '', $path ) );
+					continue;
+				}
+
+				// save file name with path.
+				$file_data['paths'][]       = str_replace( ABSPATH, '', $path );
+				$file_data['hashs'][]       = md5_file( $path );
+				$file_data['timestamps'][]  = filemtime( $path );
+				$file_data['permissions'][] = substr( sprintf( '%o', fileperms( $path ) ), -4 );
 			}
 		}
+
 		return $file_data;
 	}
 
@@ -214,18 +260,20 @@ class Directory_And_File_Helpers {
 	 *
 	 * @param boolean $add_wp_dir - Add WP dir to result.
 	 *
-	 * @return array - Result.
+	 * @return array - Indexed array of absolute plugin directory paths (e.g., '/var/www/html/wp-content/plugins/akismet').
 	 *
 	 * @since 2.0.0
+	 * @since 2.3.0 - Normalized paths with wp_normalize_path() for consistent forward slashes on all OS.
 	 */
 	public static function create_plugin_keys( $add_wp_dir = true ) {
 		$plugin_keys_cache = wp_cache_get( MFM_PREFIX . 'plugin_keys' );
+
 		if ( false === $plugin_keys_cache ) {
 			$plugin_keys_cache = array();
 			$info              = self::get_installed_plugin_info();
 
 			foreach ( array_keys( $info ) as $plugin ) {
-				$plugin_keys_cache[] = ( $add_wp_dir ) ? dirname( WP_PLUGIN_DIR . '/' . $plugin ) : dirname( $plugin );
+				$plugin_keys_cache[] = ( $add_wp_dir ) ? \wp_normalize_path( dirname( WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . $plugin ) ) : \wp_normalize_path( dirname( $plugin ) );
 			}
 
 			wp_cache_set( MFM_PREFIX . 'plugin_keys', $plugin_keys_cache, '', 60 );
@@ -280,25 +328,35 @@ class Directory_And_File_Helpers {
 	/**
 	 * Check hash against currently stored hash.
 	 *
-	 * @param string $file_path - Lookup path.
-	 * @param string $incoming_hash - Current has.
+	 * @param string $file_path - Lookup path of the file to check.
+	 * @param string $incoming_hash - Hash to check against stored value.
 	 *
 	 * @return bool - Result.
 	 *
 	 * @since 2.0.0
 	 */
 	public static function check_stored_file_hash( $file_path, $incoming_hash ) {
-		$path      = trailingslashit( dirname( $file_path ) );
-		$found     = DB_Handler::get_stored_files_by_path( $path );
-		$file_name = '/' . trim( substr( $file_path, strrpos( $file_path, '/' ) + 1 ) );
+		$absolute_containing_dir_path = \wp_normalize_path( dirname( $file_path ) );
+		$absolute_containing_dir_path = \untrailingslashit( $absolute_containing_dir_path );
+
+		$found = DB_Handler::get_stored_files_by_path( $absolute_containing_dir_path );
+
+		// Directory path may be stored with or without trailing slash, retry if needed.
+		if ( empty( $found ) ) {
+			$found = DB_Handler::get_stored_files_by_path( \trailingslashit( $absolute_containing_dir_path ) );
+		}
+
+		// Relative path from wp root to file, e.g. wp-admin/admin.php.
+		$relative_file_path_with_name = str_replace( ABSPATH, '', $file_path );
 
 		if ( isset( $found[0] ) ) {
 			$stored_hash             = false;
 			$found_file_paths_array  = maybe_unserialize( $found[0]['file_paths'] );
 			$found_file_hashes_array = maybe_unserialize( $found[0]['file_hashes'] );
 			$index                   = 0;
-			foreach ( $found_file_paths_array as $check_path ) {
-				if ( $check_path === $file_name ) {
+			foreach ( $found_file_paths_array as $stored_relative_path_with_name ) {
+				// $stored_relative_path_with_name format is a relative path, e.g. wp-admin/about.php.
+				if ( $stored_relative_path_with_name === $relative_file_path_with_name ) {
 					$stored_hash = $found_file_hashes_array[ $index ];
 				}
 				++$index;
@@ -331,7 +389,9 @@ class Directory_And_File_Helpers {
 		$max_size                 = Settings_Helper::get_setting_cached( 'max-file-size', 5 );
 		$file_size_limit          = $max_size * 1048576;
 
-		if ( in_array( $path, $ignore_files, true ) ) {
+		$path_is_in_ignored_files = in_array( $path, $ignore_files, true );
+
+		if ( $path_is_in_ignored_files ) {
 			$msg  = Logger::get_log_timestamp() . ' Attempted to check file, but skipped as ignored:' . " \n";
 			$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
 			Logger::write_to_log( $msg );
@@ -364,17 +424,20 @@ class Directory_And_File_Helpers {
 				Logger::write_to_log( $msg );
 				$can_continue = false;
 			}
-	
+
 			if ( is_file( ABSPATH . $path ) && filesize( ABSPATH . $path ) > $file_size_limit ) {
 				$msg  = Logger::get_log_timestamp() . ' File limit exceeded:' . " \n";
 				$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
+
 				Logger::write_to_log( $msg );
+
 				do_action( MFM_PREFIX . 'file_exceeded_size_event_created', $path );
+
 				$can_continue = false;
 			}
 		}
 
-		if ( in_array( $path, $ignore_files, true ) ) {
+		if ( $path_is_in_ignored_files ) {
 			$msg  = Logger::get_log_timestamp() . ' Attempted to check file as added, but ignored:' . " \n";
 			$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
 			Logger::write_to_log( $msg );
@@ -382,6 +445,53 @@ class Directory_And_File_Helpers {
 		}
 
 		return $can_continue;
+	}
+
+	/**
+	 * Check whether a path matches a single pattern, supporting *, ** and ? wildcards.
+	 *
+	 * ** matches any number of characters including directory separators (any depth).
+	 * *  matches any number of characters within a single path segment (no slash crossing).
+	 * ?  matches exactly one character within a single path segment.
+	 *
+	 * For plain patterns (no wildcards), a regex with path boundary anchors is used
+	 * to prevent partial segment matches (e.g. "uploads" will not match "uploads-backup").
+	 *
+	 * @param string $path    - Absolute path being tested.
+	 * @param string $pattern - Stored pattern, may contain **, * or ?.
+	 *
+	 * @return bool
+	 *
+	 * @since 2.3.0
+	 */
+	private static function matches_path_pattern( string $path, string $pattern ): bool {
+		// Remove trailing slash from pattern for consistency to avoid mismatches.
+		$pattern = rtrim( $pattern, '/' );
+
+		$is_wildcard = false !== strpbrk( $pattern, '*?' );
+
+		if ( $is_wildcard ) {
+			// ** must be substituted before * to avoid double-replacement.
+			$escaped = str_replace(
+				array( '\*\*', '\*', '\?' ),
+				array( '.*', '[^/]*', '[^/]' ),
+				preg_quote( $pattern, '#' )
+			);
+
+			$regex = '#' . $escaped . '(/|$)#';
+
+			$result = (bool) preg_match( $regex, $path );
+
+			return $result;
+		}
+
+		// Ensure the pattern is bounded by path separators to avoid partial matches (e.g. "uploads" matching "uploads-backup").
+		$match = (bool) preg_match(
+			'#(?:^|/)' . preg_quote( $pattern, '#' ) . '(?:/|$)#',
+			$path
+		);
+
+		return $match;
 	}
 
 	/**
@@ -400,17 +510,16 @@ class Directory_And_File_Helpers {
 		if ( empty( $ignored_dirs ) ) {
 			return false;
 		}
-		// Is path a child of an ignored path?
-		$lookup = false;
-		foreach ( $ignored_dirs as $ignored ) {
-			$lookup = strpos( $path, $ignored );
-		}
 
-		if ( false !== $lookup ) {
-			$msg = Logger::get_log_timestamp() . ' PATH IS IGNORED, SKIPPING' . " \n";
-			$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
-			Logger::write_to_log( $msg );
-			return true;
+		foreach ( $ignored_dirs as $ignored ) {
+			if ( self::matches_path_pattern( $path, $ignored ) ) {
+				$msg  = Logger::get_log_timestamp() . ' PATH IS IGNORED, SKIPPING' . " \n";
+				$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
+
+				Logger::write_to_log( $msg );
+
+				return true;
+			}
 		}
 
 		return false;
@@ -428,24 +537,17 @@ class Directory_And_File_Helpers {
 	public static function is_path_excluded( $path ) {
 		$ignore_dirs = Settings_Helper::get_setting_cached( 'excluded_directories' );
 
-		// Is path a child of an ignored path?
 		if ( ! empty( $ignore_dirs ) ) {
 			foreach ( $ignore_dirs as $ignored ) {
-				$lookup = strpos( $path, $ignored );
-				if ( false !== $lookup ) {
-					$msg = Logger::get_log_timestamp() . ' PATH IS CHILD OF EXCLUDED, SKIPPING' . " \n";
+				if ( self::matches_path_pattern( $path, $ignored ) ) {
+					$msg  = Logger::get_log_timestamp() . ' PATH IS CHILD OF EXCLUDED, SKIPPING' . " \n";
 					$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
+
 					Logger::write_to_log( $msg );
+
 					return true;
 				}
 			}
-		}
-
-		if ( ! empty( $ignore_dirs ) && in_array( $path, $ignore_dirs, true ) ) {
-			$msg = Logger::get_log_timestamp() . ' PATH IS EXCLUDED, SKIPPING' . " \n";
-			$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
-			Logger::write_to_log( $msg );
-			return true;
 		}
 
 		return false;

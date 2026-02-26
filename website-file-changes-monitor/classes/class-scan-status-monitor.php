@@ -40,7 +40,8 @@ class Scan_Status_Monitor {
 					return self::get_status();
 				},
 				'permission_callback' => function () {
-					return true;
+					// Allow only users with manage_options capability to access this endpoint.
+					return current_user_can( 'manage_options' );
 				},
 			)
 		);
@@ -79,16 +80,5 @@ class Scan_Status_Monitor {
 		$return = get_site_option( MFM_PREFIX . 'monitor_status' );
 		// All good, pat on the back.
 		return new \WP_REST_Response( $return, 200 );
-	}
-
-	/**
-	 * Check if can get status.
-	 *
-	 * @return bool
-	 *
-	 * @since 2.0.0
-	 */
-	public static function get_status_permissions_check() {
-		return true;
 	}
 }

@@ -38,7 +38,6 @@ class Setting_Validator {
 		$array_settings = array(
 			'excluded_file_extensions',
 			'excluded_files',
-			'allowed-in-core-dirs',
 			'allowed-in-core-files',
 			'enabled-notifications',
 		);
@@ -84,21 +83,26 @@ class Setting_Validator {
 		if ( 'custom_email_address' === $setting_to_validate ) {
 			if ( strpos( $incoming, ',' ) !== false ) {
 				$incoming_addresses = explode( ',', $incoming );
-				$return_string = array();
+				$return_string      = array();
+
 				foreach ( $incoming_addresses as $incoming_address ) {
 					if ( ! filter_var( $incoming_address, FILTER_VALIDATE_EMAIL ) ) {
 						return false;
 					} else {
 						$return_string[] = sanitize_email( $incoming_address );
-					}					
+					}
 				}
+
 				return implode( ',', $return_string );
+
 			} else {
 				if ( ! empty( $incoming ) && ! filter_var( $incoming, FILTER_VALIDATE_EMAIL ) ) {
 					return false;
 				}
+
 				return sanitize_email( $incoming );
-			}			
+
+			}
 		}
 
 		if ( 'excluded_directories' === $setting_to_validate || 'ignored_directories' === $setting_to_validate ) {
@@ -107,9 +111,10 @@ class Setting_Validator {
 				$incoming = array();
 			}
 			foreach ( $incoming as $item ) {
-				if ( strpbrk( $item, '\\?%*:|\"<>' ) ) {
+				if ( strpbrk( $item, '\\%:|\"<>' ) ) {
 					return false;
 				}
+
 				if ( 'ignored_directories' === $setting_to_validate && ! empty( $current_excluded_directories ) ) {
 					if ( in_array( ABSPATH . $item, $current_excluded_directories, true ) ) {
 						return false;

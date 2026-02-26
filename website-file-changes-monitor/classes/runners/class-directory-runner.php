@@ -15,16 +15,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use MFM\Helpers\Directory_And_File_Helpers;
-use MFM\Helpers\Settings_Helper;
 use MFM\MFM_Fast_Cache;
+use MFM\Helpers\Directory_And_File_Helpers;
 
 /**
  * Background runner for dirs.
  *
  * @since 2.0.0
  */
-class Directory_Runner extends \WP_Background_Process {
+class Directory_Runner extends \MFM\WP_Background_Process {
 
 	/**
 	 * Runner prefix.
@@ -60,26 +59,44 @@ class Directory_Runner extends \WP_Background_Process {
 
 			if ( ! empty( $items ) ) {
 
-				$ignore_dirs = Settings_Helper::get_setting_cached( 'excluded_directories' );
-
 				foreach ( $items as $item ) {
-					if ( ! in_array( $item, $ignore_dirs, true ) ) {
+					if ( ! Directory_And_File_Helpers::is_path_excluded( $item ) ) {
 						\MFM::push_item_to_list( $item );
 					}
 				}
 			}
 		}
 
-		$data = array(
-			'time' => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
-			'path' => $incoming_item,
-		);
-
 		if ( $incoming_item ) {
-			MFM_Fast_Cache::add_to_cache( "('" . $incoming_item . "', '" . current_time( 'timestamp' ) . "', '" . substr( sprintf( "%o", fileperms( $incoming_item ) ), -4 ) . "')" ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
+			MFM_Fast_Cache::add_to_cache( "('" . esc_sql( $incoming_item ) . "', '" . current_time( 'timestamp' ) . "', '" . substr( sprintf( '%o', fileperms( $incoming_item ) ), -4 ) . "')" );  // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 		}
 
 		return false;
+	}
+
+	/**
+	 * Background process chain ID.
+	 *
+	 * @var string
+	 * @since 2.3.0
+	 */
+	private $mfm_chain_id = '';
+
+	/**
+	 * Get chain ID without cross-runner nonce verification.
+	 *
+	 * Overrides parent to avoid check_ajax_referer() call that fails
+	 * when dispatching one runner from another runner's AJAX context.
+	 *
+	 * @return string
+	 *
+	 * @since 2.3.0
+	 */
+	public function get_chain_id() {
+		if ( empty( $this->mfm_chain_id ) ) {
+			$this->mfm_chain_id = \wp_generate_uuid4();
+		}
+		return $this->mfm_chain_id;
 	}
 
 	/**

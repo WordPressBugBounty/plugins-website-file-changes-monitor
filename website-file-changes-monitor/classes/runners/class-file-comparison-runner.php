@@ -25,7 +25,7 @@ use MFM\Helpers\Settings_Helper;
  *
  * @since 2.0.0
  */
-class File_Comparison_Runner extends \WP_Background_Process {
+class File_Comparison_Runner extends \MFM\WP_Background_Process {
 
 	/**
 	 * Runner prefix.
@@ -126,6 +126,31 @@ class File_Comparison_Runner extends \WP_Background_Process {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Background process chain ID.
+	 *
+	 * @var string
+	 * @since 2.3.0
+	 */
+	private $mfm_chain_id = '';
+
+	/**
+	 * Get chain ID without cross-runner nonce verification.
+	 *
+	 * Overrides parent to avoid check_ajax_referer() call that fails
+	 * when dispatching one runner from another runner's AJAX context.
+	 *
+	 * @return string
+	 *
+	 * @since 2.3.0
+	 */
+	public function get_chain_id() {
+		if ( empty( $this->mfm_chain_id ) ) {
+			$this->mfm_chain_id = \wp_generate_uuid4();
+		}
+		return $this->mfm_chain_id;
 	}
 
 	/**

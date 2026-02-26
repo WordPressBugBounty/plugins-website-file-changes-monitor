@@ -63,6 +63,12 @@ class Emailer {
 		if ( ! empty( $events ) ) {
 			$message = '<p>' . __( 'The below is a list file change events from your most recent scan', 'website-file-changes-monitor' ) . '</p>' . " \n";
 
+			$type_labels = array(
+				'added'    => \esc_html__( 'File added', 'website-file-changes-monitor' ),
+				'modified' => \esc_html__( 'File modified', 'website-file-changes-monitor' ),
+				'removed'  => \esc_html__( 'File removed', 'website-file-changes-monitor' ),
+			);
+
 			foreach ( $events as $event ) {
 				$message .= " \n";
 				$message .= '<p><strong>' . Events_Helper::create_event_type_label( $event['event_type'], 'all', true ) . '</strong></p>' . " \n";
@@ -80,14 +86,30 @@ class Emailer {
 						Logger::write_to_log( $msg );
 						continue;
 					}
+
 					$val_i = 0;
+
 					foreach ( $is_arr as $type => $item ) {
 						if ( $val_i < $limit ) {
 							if ( is_array( $item ) ) {
 								$i = 0;
 								foreach ( $item as $file ) {
 									if ( $i < $limit ) {
-										$message .= '<p>File ' . ucfirst( $type ) . ': ' . $file . '</p>' . " \n";
+										if ( 'permissions_changed' === $type && is_array( $file ) ) {
+											$file_path = $file['file'] ?? '';
+											$previous  = $file['previous'] ?? '';
+											$current   = $file['current'] ?? '';
+
+											$message .= '<p>'
+												. \esc_html__( 'File Permissions changed', 'website-file-changes-monitor' ) . ': ' . \esc_html( $file_path )
+												. ' (' . \esc_html__( 'previous', 'website-file-changes-monitor' ) . ': ' . \esc_html( $previous )
+												. ', ' . \esc_html__( 'current', 'website-file-changes-monitor' ) . ': ' . \esc_html( $current )
+												. ')</p>' . " \n";
+										} else {
+											$type_label = $type_labels[ $type ] ?? \esc_html( ucfirst( $type ) );
+
+											$message .= '<p>' . $type_label . ': ' . \esc_html( $file ) . '</p>' . " \n";
+										}
 									}
 
 									++$i;
@@ -152,7 +174,7 @@ class Emailer {
 		} else {
 			$to = isset( $_POST['email_address'] ) ? sanitize_email( $email_address ) : false;
 		}
-		
+
 		if ( ! $to ) {
 			$return = array(
 				'message' => __( 'No email supplied', 'website-file-changes-monitor' ),
@@ -163,7 +185,7 @@ class Emailer {
 		$subject = esc_html__( 'MFM Email Test', 'website-file-changes-monitor' );
 		$message = esc_html__( 'This is a test message, sent from the Melapress File Monitor plugin', 'website-file-changes-monitor' );
 
-		$result  = self::send_email( $to, $subject, $message );
+		$result = self::send_email( $to, $subject, $message );
 
 		if ( ! $result ) {
 			$return = array(

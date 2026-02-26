@@ -25,7 +25,7 @@ use MFM\Helpers\Logger;
  *
  * @since 2.0.0
  */
-class Core_File_Runner extends \WP_Background_Process {
+class Core_File_Runner extends \MFM\WP_Background_Process {
 
 	/**
 	 * Runner prefix.
@@ -64,9 +64,27 @@ class Core_File_Runner extends \WP_Background_Process {
 			return false;
 		}
 
+		$ignore_files = Settings_Helper::get_setting_cached( 'excluded_files' );
+		$ignore_files = ( is_array( $ignore_files ) ) ? $ignore_files : array();
+
+		$allowed_core_files = Settings_Helper::get_setting_cached( 'allowed-in-core-files' );
+		$allowed_core_files = ( is_array( $allowed_core_files ) ) ? $allowed_core_files : array();
+
+		if ( ! empty( $ignore_files ) && in_array( basename( $path ), $ignore_files, true ) ) {
+			$msg  = Logger::get_log_timestamp() . ' Attempted to check file, but skipped as ignored:' . " \n";
+			$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
+			Logger::write_to_log( $msg );
+			return false;
+		} elseif ( ! empty( $allowed_core_files ) && in_array( basename( $path ), $allowed_core_files, true ) ) {
+			$msg  = Logger::get_log_timestamp() . ' Attempted to check file, but skipped as allowed in core:' . " \n";
+			$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
+			Logger::write_to_log( $msg );
+			return false;
+		}
+
 		if ( ! file_exists( $path ) ) {
 			$current_id = get_site_option( MFM_PREFIX . 'active_scan_id' );
-			$new_data = array(
+			$new_data   = array(
 				'removed' => array( $path ),
 			);
 			$data       = array(
@@ -91,9 +109,9 @@ class Core_File_Runner extends \WP_Background_Process {
 		if ( $expected_hash !== $current_hash ) {
 			$is_same_as_last_scan = Directory_And_File_Helpers::check_stored_file_hash( $path, $current_hash );
 
-			// No change since last scan, dont alert.
+			// No change since last scan, don't alert.
 			if ( $is_same_as_last_scan ) {
-				$msg = Logger::get_log_timestamp() . ' Core file is same as last scan, skipping' . " \n";
+				$msg  = Logger::get_log_timestamp() . ' Core file is same as last scan, skipping' . " \n";
 				$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
 				Logger::write_to_log( $msg );
 				return false;
@@ -113,13 +131,6 @@ class Core_File_Runner extends \WP_Background_Process {
 				return false;
 			}
 
-			if ( in_array( basename( $path ), $ignore_files, true ) ) {
-				$msg  = Logger::get_log_timestamp() . ' Attempted to check file, but skipped as ignored:' . " \n";
-				$msg .= Logger::get_log_timestamp() . ' ' . $path . " \n";
-				Logger::write_to_log( $msg );
-				return false;
-			}
-
 			$current_id = get_site_option( MFM_PREFIX . 'active_scan_id' );
 			$data       = array(
 				'path'        => trailingslashit( dirname( $path ) ),
@@ -134,6 +145,32 @@ class Core_File_Runner extends \WP_Background_Process {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Background process chain ID.
+	 *
+	 * @var string
+	 *
+	 * @since 2.3.0
+	 */
+	private $mfm_chain_id = '';
+
+	/**
+	 * Get chain ID without cross-runner nonce verification.
+	 *
+	 * Overrides parent to avoid check_ajax_referer() call that fails
+	 * when dispatching one runner from another runner's AJAX context.
+	 *
+	 * @return string
+	 *
+	 * @since 2.3.0
+	 */
+	public function get_chain_id() {
+		if ( empty( $this->mfm_chain_id ) ) {
+			$this->mfm_chain_id = \wp_generate_uuid4();
+		}
+		return $this->mfm_chain_id;
 	}
 
 	/**
