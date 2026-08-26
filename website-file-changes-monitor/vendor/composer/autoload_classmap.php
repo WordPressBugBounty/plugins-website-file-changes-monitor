@@ -12,6 +12,7 @@ return array(
     'MFM\\Admin\\Admin_Manager' => $baseDir . '/classes/admin/class-admin-manager.php',
     'MFM\\Admin\\CLI_Commands' => $baseDir . '/classes/admin/class-cli-commands.php',
     'MFM\\Admin\\Template_Parts\\Wildcard_Hint' => $baseDir . '/classes/admin/template-parts/class-wildcard-hint.php',
+    'MFM\\Admin\\Usage_Survey' => $baseDir . '/classes/admin/class-usage-survey.php',
     'MFM\\Crons\\Cron_Handler' => $baseDir . '/classes/crons/class-cron-handler.php',
     'MFM\\DB_Handler' => $baseDir . '/classes/class-db-handler.php',
     'MFM\\Helpers\\Directory_And_File_Helpers' => $baseDir . '/classes/helpers/class-directory-and-file-helpers.php',

@@ -1,0 +1,138 @@
+/**
+ * Plugin usage survey modals.
+ *
+ * @since 2.4.0
+ */
+
+/**
+ * Browsers without Popover API support do not apply the user agent
+ * "display: none" to [popover], so the modals are hidden here instead. Those
+ * browsers also drop the :popover-open rule below, which keeps them hidden.
+ */
+.mfm-usage-survey {
+	display: none;
+	width: min(600px, calc(100vw - 40px));
+	padding: 30px;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background-color: #fff;
+	color: #1d2327;
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.mfm-usage-survey:popover-open {
+	display: block;
+}
+
+.mfm-usage-survey:focus {
+	outline: none;
+}
+
+.mfm-usage-survey::backdrop {
+	background-color: rgba(0, 0, 0, 0.5);
+}
+
+.mfm-usage-survey-close {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	padding: 0 8px;
+	border: none;
+	background: none;
+	color: #646970;
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.mfm-usage-survey-close:hover {
+	color: #1d2327;
+}
+
+.mfm-usage-survey-logo {
+	display: block;
+	max-width: 260px;
+	margin-bottom: 25px;
+}
+
+.mfm-usage-survey h2 {
+	margin: 0 0 10px;
+	font-size: 1.375rem;
+	line-height: 1.3;
+}
+
+.mfm-usage-survey p {
+	margin: 0 0 20px;
+	font-size: 0.875rem;
+	line-height: 1.6;
+}
+
+.mfm-usage-survey-answers {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-bottom: 20px;
+}
+
+.mfm-usage-survey-answers label {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 12px 14px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	cursor: pointer;
+	transition: border-color 0.2s, background-color 0.2s;
+}
+
+.mfm-usage-survey-answers label:hover {
+	border-color: #233152;
+	background-color: #f6f7f7;
+}
+
+.mfm-usage-survey-answers label:has(input:checked) {
+	border-color: #233152;
+	background-color: #f0f2f6;
+}
+
+.mfm-usage-survey-answers input {
+	margin: 2px 0 0;
+	flex-shrink: 0;
+}
+
+.mfm-usage-survey-validation {
+	color: #b32d2e;
+}
+
+.mfm-usage-survey-actions {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.mfm-usage-survey-submit {
+	display: inline-block;
+	padding: 10px 24px;
+	border: 1px solid #233152;
+	border-radius: 2px;
+	background-color: #233152;
+	color: #fff;
+	font-size: 0.875rem;
+	font-weight: 600;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.mfm-usage-survey-submit:hover,
+.mfm-usage-survey-submit:focus {
+	border-color: #101726;
+	background-color: #101726;
+	color: #fff;
+}
+
+.mfm-usage-survey-submitting {
+	pointer-events: none;
+	opacity: 0.6;
+}

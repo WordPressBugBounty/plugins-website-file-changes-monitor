@@ -95,6 +95,41 @@ class Admin_Manager {
 	}
 
 	/**
+	 * Get the screen bases of the plugins top level page.
+	 *
+	 * @return array $screen_bases - Single site and network admin screen bases.
+	 *
+	 * @since 2.4.0
+	 */
+	private static function get_top_level_screen_bases(): array {
+		return array(
+			'toplevel_page_file-monitor-admin',
+			'toplevel_page_file-monitor-admin-network',
+		);
+	}
+
+	/**
+	 * Check if the current admin screen belongs to the plugin.
+	 *
+	 * @return bool $is_mfm_screen - True on the top level page or any of its sub pages.
+	 *
+	 * @since 2.4.0
+	 */
+	public static function is_mfm_admin_screen(): bool {
+		if ( ! function_exists( 'get_current_screen' ) ) {
+			return false;
+		}
+
+		$screen = \get_current_screen();
+
+		if ( ! $screen ) {
+			return false;
+		}
+
+		return in_array( $screen->base, self::get_top_level_screen_bases(), true ) || str_contains( $screen->base, 'file-monitoring' );
+	}
+
+	/**
 	 * Handle scripts and CSS.
 	 *
 	 * @param  string $admin_page_slug - Current slug.
@@ -102,6 +137,7 @@ class Admin_Manager {
 	 * @return void
 	 *
 	 * @since 2.0.0
+	 * @since 2.4.0 - Screen detection moved to is_mfm_admin_screen().
 	 */
 	public static function load_scripts( $admin_page_slug ) {
 		wp_register_style( 'mfm-admin-global-css', MFM_WP_URL . 'assets/css/mfm-admin-global-css.css', false, '1.0.0' );
@@ -109,14 +145,7 @@ class Admin_Manager {
 
 		$screen = get_current_screen();
 
-		$our_slugs = array(
-			'toplevel_page_file-monitor-admin',
-			'toplevel_page_file-monitor-admin-network',
-		);
-
-		$is_sub_slug = str_contains( $screen->base, 'file-monitoring' );
-
-		if ( in_array( $screen->base, $our_slugs, true ) || $is_sub_slug ) {
+		if ( self::is_mfm_admin_screen() ) {
 			$data_array = array(
 				'ajaxURL'                   => admin_url( 'admin-ajax.php' ),
 				'adminEmail'                => get_bloginfo( 'admin_email' ),
@@ -155,7 +184,7 @@ class Admin_Manager {
 			 * Scripts
 			 */
 			// Only load scan manager on the main file monitor admin page (single site and multisite).
-			if ( in_array( $screen->base, $our_slugs, true ) ) {
+			if ( in_array( $screen->base, self::get_top_level_screen_bases(), true ) ) {
 				wp_enqueue_script( 'mfm-scan-manager-js', MFM_WP_URL . 'assets/js/mfm-scan-manager.js', array( 'jquery' ), MFM_WP_VERSION, true );
 			}
 
@@ -496,9 +525,11 @@ class Admin_Manager {
 	 * @return void
 	 *
 	 * @since 2.0.0
+	 * @since 2.4.0 - Prevented errors when saving settings with a 24-hour WordPress time format.
 	 */
 	public static function save_options() {
 		$nonce = isset( $_POST['mfm-settings-save-nonce'] ) ? sanitize_key( wp_unslash( $_POST['mfm-settings-save-nonce'] ) ) : '';
+
 		if ( ! current_user_can( 'manage_options' ) || ! wp_verify_nonce( $nonce, 'mfm-settings-save' ) || ! isset( $_POST['mfm-settings'] ) ) {
 			return;
 		}
@@ -507,14 +538,24 @@ class Admin_Manager {
 		$posted   = wp_unslash( $_POST['mfm-settings'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 		if ( isset( $posted['scan-hour'] ) ) {
-			$posted_scan_time  = $posted['scan-hour'] . ':00' . ' ' . strtoupper( $posted['scan-hour-am'] ); // phpcs:ignore Generic.Strings.UnnecessaryStringConcat.Found
-			$current_scan_time = sprintf( '%02d', get_site_option( MFM_PREFIX . 'scan-hour', Settings_Helper::get_settings_default_value( 'scan-hour' ) ) ) . ':00' . ' ' . strtoupper( get_site_option( MFM_PREFIX . 'scan-hour-am', Settings_Helper::get_settings_default_value( 'scan-hour-am' ) ) ); // phpcs:ignore Generic.Strings.UnnecessaryStringConcat.Found
+			// Build the submitted scan time string. AM/PM is only present when the WP time format uses it.
+			$posted_am_pm = strtoupper( \sanitize_text_field( $posted['scan-hour-am'] ?? '' ) );
+			if ( '' !== $posted_am_pm ) {
+				$posted_am_pm = ' ' . $posted_am_pm;
+			}
+			$posted_scan_time = \sanitize_text_field( $posted['scan-hour'] ) . ':00' . $posted_am_pm;
 
-			if ( 'weekly' === $posted['scan-frequency'] ) {
-				$posted_scan_time  .= ' ' . Settings_Helper::convert_to_day_string( $posted['scan-day'] );
-				$current_scan_time .= ' ' . Settings_Helper::convert_to_day_string( get_site_option( MFM_PREFIX . 'scan-day', Settings_Helper::get_settings_default_value( 'scan-day' ) ) );
+			// Build the currently saved scan time string for comparison.
+			$current_am_pm     = Settings_Helper::is_time_format_am_pm() ? ' ' . strtoupper( \get_site_option( MFM_PREFIX . 'scan-hour-am', Settings_Helper::get_settings_default_value( 'scan-hour-am' ) ) ) : '';
+			$current_scan_time = sprintf( '%02d', \get_site_option( MFM_PREFIX . 'scan-hour', Settings_Helper::get_settings_default_value( 'scan-hour' ) ) ) . ':00' . $current_am_pm;
+
+			// For weekly scans, append the day name to both time strings.
+			if ( 'weekly' === \sanitize_text_field( $posted['scan-frequency'] ) ) {
+				$posted_scan_time  .= ' ' . Settings_Helper::convert_to_day_string( (int) \sanitize_text_field( $posted['scan-day'] ) );
+				$current_scan_time .= ' ' . Settings_Helper::convert_to_day_string( \get_site_option( MFM_PREFIX . 'scan-day', Settings_Helper::get_settings_default_value( 'scan-day' ) ) );
 			}
 
+			// If the scan time changed, clear the existing schedule so it gets re-created.
 			if ( $posted_scan_time !== $current_scan_time ) {
 				do_action( MFM_PREFIX . 'scan_time_updated', $current_scan_time, $posted_scan_time );
 				Settings_Helper::clear_scan_schedule();
@@ -897,7 +938,7 @@ class Admin_Manager {
 			++$count;
 		}
 
-		return $count;
+		return (int) \apply_filters( MFM_PREFIX . 'admin_notices_count', $count );
 	}
 
 	/**

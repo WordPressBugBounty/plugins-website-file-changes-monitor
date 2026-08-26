@@ -87,9 +87,11 @@ class MFM {
 	 * @return void
 	 *
 	 * @since 2.0.0
+	 * @since 2.4.0 - Registered the usage survey hooks.
 	 */
 	public static function on_load() {
 		MFM\Admin\Admin_Manager::actions();
+		MFM\Admin\Usage_Survey::init();
 
 		// Ajax.
 		add_action( 'wp_ajax_mfm_start_directory_runner', array( __CLASS__, 'start_directory_runner' ) );

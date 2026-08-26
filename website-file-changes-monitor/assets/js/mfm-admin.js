@@ -70,7 +70,7 @@ jQuery(document).ready(function() {
 					},
 					complete: function(data) {
 						if (data.responseJSON.success) {
-							// Silence.
+							document.dispatchEvent(new CustomEvent('mfmSetupWizardCompleted'));
 						}
 					},
 				});
@@ -135,6 +135,7 @@ jQuery(document).ready(function() {
 								jQuery('#mfm-setup-wizard').removeClass('loaded');
 								setTimeout(() => {
 									jQuery('#mfm-setup-wizard-wrapper').fadeOut(300);
+									document.dispatchEvent(new CustomEvent('mfmSetupWizardCompleted'));
 								}, 300);
 
 								setTimeout(() => {

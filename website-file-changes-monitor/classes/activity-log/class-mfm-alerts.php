@@ -85,7 +85,7 @@ if ( ! class_exists( '\WSAL\Custom_Alerts\MFM_Alerts' ) ) {
 						),
 
 						array(
-							6073,
+							6085,
 							WSAL_LOW,
 							esc_html__( 'Melapress File Monitor scan frequency modified', 'website-file-changes-monitor' ),
 							/* Translators: %new% - Type variable */

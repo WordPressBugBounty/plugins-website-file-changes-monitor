@@ -50,6 +50,7 @@ class ComposerStaticInitb108f1a8d9ecfd98ee7dbe04fc6d052a
         'MFM\\Admin\\Admin_Manager' => __DIR__ . '/../..' . '/classes/admin/class-admin-manager.php',
         'MFM\\Admin\\CLI_Commands' => __DIR__ . '/../..' . '/classes/admin/class-cli-commands.php',
         'MFM\\Admin\\Template_Parts\\Wildcard_Hint' => __DIR__ . '/../..' . '/classes/admin/template-parts/class-wildcard-hint.php',
+        'MFM\\Admin\\Usage_Survey' => __DIR__ . '/../..' . '/classes/admin/class-usage-survey.php',
         'MFM\\Crons\\Cron_Handler' => __DIR__ . '/../..' . '/classes/crons/class-cron-handler.php',
         'MFM\\DB_Handler' => __DIR__ . '/../..' . '/classes/class-db-handler.php',
         'MFM\\Helpers\\Directory_And_File_Helpers' => __DIR__ . '/../..' . '/classes/helpers/class-directory-and-file-helpers.php',
