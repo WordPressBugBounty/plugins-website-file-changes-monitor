@@ -30,6 +30,18 @@ use MFM\Crons\Cron_Handler;
 class Admin_Manager {
 
 	/**
+	 * Page slugs of the plugin sub pages that show the Black Friday banner, used to match the current screen.
+	 *
+	 * @var string[]
+	 *
+	 * @since 2.4.1
+	 */
+	public const BF_BANNER_SUB_PAGE_SLUGS = array(
+		'file-monitor-settings',
+		'file-monitor-help',
+	);
+
+	/**
 	 * Current setting errors.
 	 *
 	 * @var array
@@ -65,6 +77,10 @@ class Admin_Manager {
 		add_action( 'admin_notices', array( __CLASS__, 'plugin_was_updated_banner' ), 10, 3 );
 		add_action( 'network_admin_notices', array( __CLASS__, 'plugin_was_updated_banner' ), 10, 3 );
 		add_action( 'wp_ajax_dismiss_mfm_update_notice', array( __CLASS__, 'dismiss_update_notice' ) );
+
+		add_action( 'admin_notices', array( __CLASS__, 'extra_event_banner' ) );
+		add_action( 'network_admin_notices', array( __CLASS__, 'extra_event_banner' ) );
+		add_action( 'wp_ajax_' . MFM_PREFIX . 'dismiss_extra_event_banner', array( __CLASS__, 'dismiss_extra_event_banner' ) );
 	}
 
 	/**
@@ -922,6 +938,273 @@ class Admin_Manager {
 		delete_site_option( MFM_PREFIX . 'update_notice_needed' );
 
 		wp_send_json_success( esc_html__( 'Complete.', 'melapress-login-security' ) );
+	}
+
+	/**
+	 * Checks whether a screen is one of the plugin admin pages that show the Black Friday banner.
+	 *
+	 * Matches the top level page and the sub pages by screen base, so every tab of the pages is covered.
+	 * On multisite the plugin pages are in the network admin, where the screen base ends with "-network".
+	 *
+	 * @param \WP_Screen|null $screen - The screen to check.
+	 *
+	 * @return bool $is_banner_screen - True if the screen is a plugin admin page.
+	 *
+	 * @since 2.4.1
+	 */
+	public static function is_extra_event_banner_screen( $screen ): bool {
+		if ( ! $screen instanceof \WP_Screen ) {
+			return false;
+		}
+
+		if ( in_array( $screen->base, self::get_top_level_screen_bases(), true ) ) {
+			return true;
+		}
+
+		foreach ( self::BF_BANNER_SUB_PAGE_SLUGS as $slug ) {
+			if ( str_ends_with( $screen->base, '_page_' . $slug ) || str_ends_with( $screen->base, '_page_' . $slug . '-network' ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Campaign phase of the Black Friday banner, in UTC.
+	 *
+	 * Each phase can be dismissed once. The reminder phase starts on 26 November
+	 * even if an administrator first returns later, and 1 December is included in full.
+	 *
+	 * @return string $phase - Phase start date, or an empty string outside the campaign.
+	 *
+	 * @since 2.4.1
+	 */
+	public static function get_extra_event_banner_phase(): string {
+		$today = \wp_date( 'Y-m-d', null, new \DateTimeZone( 'UTC' ) );
+
+		if ( $today < '2026-11-17' || $today >= '2026-12-02' ) {
+			return '';
+		}
+
+		if ( $today < '2026-11-26' ) {
+			return '2026-11-17';
+		}
+
+		return '2026-11-26';
+	}
+
+	/**
+	 * Shows the Black Friday banner on the plugin admin pages.
+	 *
+	 * @return void
+	 *
+	 * @since 2.4.1
+	 */
+	public static function extra_event_banner() {
+		if ( ! \current_user_can( 'manage_options' ) || ! self::is_extra_event_banner_screen( \get_current_screen() ) ) {
+			return;
+		}
+
+		$phase = self::get_extra_event_banner_phase();
+
+		if ( '' === $phase || \get_site_option( MFM_PREFIX . 'extra_event_banner_dismissed', false ) === $phase ) {
+			return;
+		}
+		?>
+		<div class="black-friday mfm-extra-event-banner">
+			<img class="black-friday-svg" src="<?php echo \esc_url( MFM_WP_URL . 'assets/img/upgrade-plugin-icon.svg' ); ?>" alt="" width="113" height="101">
+
+			<div class="black-friday-content">
+				<h2 class="black-friday-title"><?php \esc_html_e( 'Thank you for using our plugin!', 'website-file-changes-monitor' ); ?><br>
+					<span class="bf-title-line-2">
+					<?php
+					printf(
+						/* translators: %s: "up to 30% off this Black Friday", shown highlighted. */
+						\esc_html__( 'Explore our premium WordPress security plugins, now %s.', 'website-file-changes-monitor' ),
+						'<span class="bf-highlight">' . \esc_html__( 'up to 30% off this Black Friday', 'website-file-changes-monitor' ) . '</span>'
+					);
+					?>
+					</span>
+				</h2>
+				<a href="https://melapress.com/black-friday/?utm_source=plugin&utm_medium=mfm&utm_campaign=BFCM2026" target="_blank" rel="noopener noreferrer" class="bf-cta-link"><?php \esc_html_e( 'View deals', 'website-file-changes-monitor' ); ?></a>
+				<p class="mfm-extra-event-banner-error" role="alert" style="display:none;"><?php \esc_html_e( 'An error occurred. Please try again.', 'website-file-changes-monitor' ); ?></p>
+			</div>
+
+			<button type="button" aria-label="<?php \esc_attr_e( 'Close', 'website-file-changes-monitor' ); ?>" class="mfm-extra-event-banner-close black-friday-close" data-dismiss-nonce="<?php echo \esc_attr( \wp_create_nonce( MFM_PREFIX . 'dismiss_extra_event_banner' ) ); ?>"></button>
+		</div>
+
+		<script type="text/javascript">
+			jQuery( document ).ready( () => {
+				jQuery( 'body' ).on( 'click', '.mfm-extra-event-banner-close', ( event ) => {
+					const button = jQuery( event.currentTarget );
+					const banner = button.closest( '.mfm-extra-event-banner' );
+					const error  = banner.find( '.mfm-extra-event-banner-error' );
+
+					error.hide();
+
+					jQuery.ajax( {
+						type: 'POST',
+						url: '<?php echo \esc_url( \admin_url( 'admin-ajax.php' ) ); ?>',
+						data: {
+							action: '<?php echo \esc_js( MFM_PREFIX . 'dismiss_extra_event_banner' ); ?>',
+							nonce: button.attr( 'data-dismiss-nonce' ),
+						},
+						success: ( result ) => {
+							if ( result && result.success ) {
+								banner.slideUp( 300 );
+							} else {
+								error.show();
+							}
+						},
+						error: () => {
+							error.show();
+						},
+					} );
+				} );
+			} );
+		</script>
+		<style>
+			@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Quicksand:wght@600;700&display=swap');
+
+			.mfm-extra-event-banner.black-friday {
+				--color-coral: #FF8977;
+				--color-deep: #020E26;
+				box-sizing: border-box;
+				min-height: 126px;
+				margin: 20px 20px 0 2px;
+				padding: 12px 3rem 12px .6rem;
+				background-color: var(--color-deep);
+				background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 182 127"><path d="M181.413 -165.636L134.391 234.514L0 234.514L2.19345e-05 -165.636L181.413 -165.636Z" fill="%23B6C3F2"/></svg>');
+				background-repeat: no-repeat;
+				background-position: 0 0;
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+				-webkit-font-smoothing: subpixel-antialiased;
+				color: #fff;
+				display: flex;
+				align-items: center;
+				gap: 1.5rem;
+				position: relative;
+				overflow: hidden;
+				border-left: 4px solid var(--color-coral);
+			}
+
+			.mfm-extra-event-banner .black-friday-svg {
+				flex-shrink: 0;
+				width: 134px;
+				height: 101px;
+				margin-right: 32px;
+				z-index: 1;
+			}
+
+			.mfm-extra-event-banner .black-friday-content {
+				z-index: 1;
+			}
+
+			.mfm-extra-event-banner .black-friday-title {
+				margin: 0 0 4px;
+				font-family: Inter, sans-serif;
+				font-size: 1.9em;
+				font-weight: 900;
+				line-height: .9em;
+				letter-spacing: .5px;
+				text-transform: uppercase;
+				color: var(--color-coral);
+			}
+
+			.mfm-extra-event-banner .bf-title-line-2 {
+				color: #fff;
+				font-size: .55em;
+				line-height: 1.4em;
+			}
+
+			.mfm-extra-event-banner .bf-highlight {
+				color: var(--color-coral);
+			}
+
+			.mfm-extra-event-banner .bf-cta-link {
+				display: inline-block;
+				margin: .25rem 0 0;
+				padding: .55rem 1.3rem;
+				border-radius: .25rem;
+				background: #D9E4FD;
+				color: #454BF7;
+				font-size: .875rem;
+				font-weight: bold;
+				text-decoration: none;
+				transition: all .2s ease-in-out;
+			}
+
+			.mfm-extra-event-banner .bf-cta-link:hover,
+			.mfm-extra-event-banner .bf-cta-link:focus {
+				background: #454BF7;
+				color: #D9E4FD;
+			}
+
+			.mfm-extra-event-banner .mfm-extra-event-banner-error {
+				margin: .5rem 0 0;
+			}
+
+			.mfm-extra-event-banner .black-friday-close {
+				position: absolute;
+				top: 20px;
+				right: 20px;
+				width: 12px;
+				height: 12px;
+				padding: 0;
+				border: none;
+				background-color: transparent;
+				background-image: url('<?php echo \esc_url( MFM_WP_URL . 'assets/img/close-icon-reverse.svg' ); ?>');
+				background-size: cover;
+				cursor: pointer;
+				z-index: 1;
+			}
+
+			@media (max-width: 1200px) {
+				.mfm-extra-event-banner.black-friday {
+					flex-direction: column;
+					gap: 1rem;
+					padding: 1.66rem;
+					background-image: none;
+					text-align: center;
+				}
+
+				.mfm-extra-event-banner .black-friday-svg {
+					width: 90px;
+					height: 80px;
+					margin: 0;
+				}
+			}
+		</style>
+		<?php
+	}
+
+	/**
+	 * Saves the current campaign phase as dismissed for this site (or network on multisite).
+	 *
+	 * @return void
+	 *
+	 * @since 2.4.1
+	 */
+	public static function dismiss_extra_event_banner() {
+		$nonce = isset( $_POST['nonce'] ) ? \sanitize_text_field( \wp_unslash( $_POST['nonce'] ) ) : '';
+
+		if ( ! \current_user_can( 'manage_options' ) || empty( $nonce ) || ! \wp_verify_nonce( $nonce, MFM_PREFIX . 'dismiss_extra_event_banner' ) ) {
+			\wp_send_json_error( \esc_html__( 'Nonce verification failed.', 'website-file-changes-monitor' ), 403 );
+		}
+
+		$phase = self::get_extra_event_banner_phase();
+
+		if ( '' !== $phase ) {
+			$option = MFM_PREFIX . 'extra_event_banner_dismissed';
+
+			// update_site_option() also returns false when the value is already saved.
+			if ( ! \update_site_option( $option, $phase ) && \get_site_option( $option, false ) !== $phase ) {
+				\wp_send_json_error( \esc_html__( 'An error occurred. Please try again.', 'website-file-changes-monitor' ) );
+			}
+		}
+
+		\wp_send_json_success();
 	}
 
 	/**

@@ -28,6 +28,7 @@ class Events_Helper {
 	 * @return array - Labels.
 	 *
 	 * @since 2.3.0
+	 * @since 2.4.1 - Added labels for subdirectory removed events.
 	 */
 	public static function get_event_label_array() {
 		$event_labels = array(
@@ -58,6 +59,7 @@ class Events_Helper {
 			'plugin-file-permissions-changed'      => __( 'Plugin file permissions modified', 'website-file-changes-monitor' ),
 			'plugin-directory-permissions-changed' => __( 'Plugin directory permissions modified', 'website-file-changes-monitor' ),
 			'plugin-directory-removed'             => __( 'Plugin removed ', 'website-file-changes-monitor' ),
+			'plugin-subdirectory-removed'          => __( 'Plugin subdirectory removed ', 'website-file-changes-monitor' ),
 			'plugin-directory-added'               => __( 'Plugin added ', 'website-file-changes-monitor' ),
 			'plugin-updated'                       => __( 'Plugin updated ', 'website-file-changes-monitor' ),
 			'theme-file-added'                     => __( 'Theme file(s) added ', 'website-file-changes-monitor' ),
@@ -65,6 +67,7 @@ class Events_Helper {
 			'theme-file-renamed'                   => __( 'Theme file(s) renamed ', 'website-file-changes-monitor' ),
 			'theme-directory-permissions-changed'  => __( 'Theme directory permissions modified', 'website-file-changes-monitor' ),
 			'theme-directory-removed'              => __( 'Theme removed ', 'website-file-changes-monitor' ),
+			'theme-subdirectory-removed'           => __( 'Theme subdirectory removed ', 'website-file-changes-monitor' ),
 			'theme-directory-added'                => __( 'Theme added ', 'website-file-changes-monitor' ),
 			'theme-updated'                        => __( 'Theme updated ', 'website-file-changes-monitor' ),
 		);

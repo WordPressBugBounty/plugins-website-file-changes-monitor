@@ -248,6 +248,7 @@ class DB_Handler {
 	 * @return void
 	 *
 	 * @since 2.0.0
+	 * @since 2.4.1 - Report a removed folder inside an existing plugin/theme on its own, and reset per-item state.
 	 */
 	public static function compare_and_report_directory_changes() {
 		$is_known                 = false;
@@ -265,6 +266,12 @@ class DB_Handler {
 
 		// Directory has been removed since last scan.
 		foreach ( $missing_since_last_scan as $item ) {
+			// Start every item clean, so details of a previous plugin/theme match are not reused.
+			$is_known                = false;
+			$is_inside_existing_root = false;
+			$final                   = array();
+			$part_b                  = array();
+
 			$old_data = self::get_held_file_paths( self::$stored_files_table_name, $item['path'] );
 
 			// Is path a child of an ignored path?
@@ -282,8 +289,14 @@ class DB_Handler {
 
 			// Check if is a known theme or plugin.
 			foreach ( $known_plugins_and_themes as $known ) {
-				if ( str_contains( $item['path'], $known ) ) {
+				if ( self::is_same_or_child_path( $item['path'], $known ) ) {
 					if ( Plugins_And_Themes_Monitor::is_currently_active_plugin( $item['path'] ) ) {
+						continue;
+					}
+
+					// The plugin/theme folder still exists, so only a folder inside it was removed. Report that folder on its own.
+					if ( \untrailingslashit( $item['path'] ) !== \untrailingslashit( $known ) && \is_dir( $known ) ) {
+						$is_inside_existing_root = true;
 						continue;
 					}
 
@@ -307,9 +320,11 @@ class DB_Handler {
 				continue;
 			}
 
+			$removed_suffix = ( $is_inside_existing_root ) ? '-subdirectory-removed' : '-directory-removed';
+
 			$data = array(
 				'path'        => ( $is_known ) ? $is_known : $item['path'],
-				'event_type'  => strtolower( Directory_And_File_Helpers::determine_directory_context( $item['path'] ) ) . '-directory-removed',
+				'event_type'  => strtolower( Directory_And_File_Helpers::determine_directory_context( $item['path'] ) ) . $removed_suffix,
 				'time'        => current_time( 'timestamp' ), // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
 				'is_read'     => 'no',
 				'data'        => maybe_serialize( self::format_event_data_string( $old_data, 'removed' ) ),
@@ -329,6 +344,12 @@ class DB_Handler {
 		}
 
 		foreach ( $added_since_last_scan as $item ) {
+			// Start every item clean, so a previous plugin/theme update does not hide the next added folder.
+			$is_known        = false;
+			$is_known_update = false;
+			$final           = array();
+			$part_b          = array();
+
 			$old_data = self::get_held_file_paths( self::$scanned_files_table_name, $item['path'] );
 
 			// Is path a child of an ignored path?
@@ -427,11 +448,14 @@ class DB_Handler {
 				continue;
 			}
 
-			if ( ! isset( $stored_dirs[ array_search( $dir_info['path'], $stored_dirs_paths, true ) ]['permissions'] ) ) {
+			$stored_key = array_search( $dir_info['path'], $stored_dirs_paths, true );
+
+			// Directory is not in the stored baseline, so there is no previous permission to compare with.
+			if ( false === $stored_key || ! isset( $stored_dirs[ $stored_key ]['permissions'] ) ) {
 				continue;
 			}
 
-			$stored_permission = $stored_dirs[ array_search( $dir_info['path'], $stored_dirs_paths, true ) ]['permissions'];
+			$stored_permission = $stored_dirs[ $stored_key ]['permissions'];
 
 			if ( empty( $dir_info['permissions'] ) || empty( $stored_permission ) ) {
 				continue;
@@ -674,6 +698,7 @@ class DB_Handler {
 	 * @return $insert_id - Event ID.
 	 *
 	 * @since 2.0.0
+	 * @since 2.4.1 - Skip file events with no files left after excluded-extension filtering.
 	 */
 	public static function add_event( $data, $update_if_found = false, $skip_cleaning = false ) {
 		global $wpdb;
@@ -681,7 +706,17 @@ class DB_Handler {
 		$insert_id  = 0;
 
 		if ( ! $skip_cleaning ) {
-			$data['data'] = self::clean_event_file_data( $data['data'] );
+			$original_data = $data['data'];
+			$data['data']  = self::clean_event_file_data( $data['data'] );
+
+			// All files of this file event have an excluded extension, so there is nothing left to report.
+			if ( str_contains( (string) $data['event_type'], '-file-' ) && self::has_event_files( $original_data ) && ! self::has_event_files( $data['data'] ) ) {
+				$msg  = Logger::get_log_timestamp() . ' File event skipped, all files have an excluded extension:' . " \n";
+				$msg .= Logger::get_log_timestamp() . ' ' . $data['event_type'] . ' ' . $data['path'] . " \n";
+				Logger::write_to_log( $msg );
+
+				return $insert_id;
+			}
 		}
 
 		$found = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %1s WHERE path = %s AND scan_run_id = %d', $table_name, $data['path'], $data['scan_run_id'] ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
@@ -767,6 +802,31 @@ class DB_Handler {
 		}
 
 		return \maybe_serialize( $return_data );
+	}
+
+	/**
+	 * Check if event data has at least one file in any of its change lists.
+	 *
+	 * @param mixed $data - Event data, an array of change type => file list, maybe serialized.
+	 *
+	 * @return bool $has_files - True when at least one file is listed.
+	 *
+	 * @since 2.4.1
+	 */
+	private static function has_event_files( $data ) {
+		$data = \maybe_unserialize( $data );
+
+		if ( ! is_array( $data ) ) {
+			return false;
+		}
+
+		foreach ( $data as $files ) {
+			if ( is_array( $files ) && ! empty( $files ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -1420,7 +1480,9 @@ class DB_Handler {
 	}
 
 	/**
-	 * Get held data for a specific path using a wooly search.
+	 * Get held data for a folder and all folders inside it.
+	 *
+	 * Matches whole folder names only, so "themes/twentytwenty" does not include "themes/twentytwentyone".
 	 *
 	 * @param string $table_to_check - Table to check.
 	 * @param string $path - Path to check.
@@ -1428,11 +1490,40 @@ class DB_Handler {
 	 * @return array|string
 	 *
 	 * @since 2.1.0
+	 * @since 2.4.1 - Match the folder and its subfolders only, not other folders with a similar name.
 	 */
 	public static function get_held_file_paths_fuzzy( $table_to_check, $path ) {
 		global $wpdb;
-		$held_data = $wpdb->get_results( $wpdb->prepare( 'SELECT file_paths FROM %1s WHERE path LIKE %s', $wpdb->prefix . $table_to_check, '%' . $path . '%' ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
+		$path      = \untrailingslashit( (string) $path );
+		$held_data = $wpdb->get_results( $wpdb->prepare( 'SELECT file_paths FROM %1s WHERE path = %s OR path LIKE %s', $wpdb->prefix . $table_to_check, $path, $wpdb->esc_like( $path ) . '/%' ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnquotedComplexPlaceholder
 		return $held_data;
+	}
+
+	/**
+	 * Check if a path is the given parent folder or a folder inside it.
+	 *
+	 * Matches whole folder names only, so "themes/twentytwenty" does not match "themes/twentytwentyone".
+	 *
+	 * @param string $path - Path to check.
+	 * @param string $parent_path - Parent folder path.
+	 *
+	 * @return bool $is_inside - True when the path is the parent folder or inside it.
+	 *
+	 * @since 2.4.1
+	 */
+	private static function is_same_or_child_path( $path, $parent_path ) {
+		$path        = \untrailingslashit( (string) $path );
+		$parent_path = \untrailingslashit( (string) $parent_path );
+
+		if ( '' === $parent_path ) {
+			return false;
+		}
+
+		if ( $path === $parent_path ) {
+			return true;
+		}
+
+		return str_starts_with( $path, $parent_path . '/' );
 	}
 
 	/**

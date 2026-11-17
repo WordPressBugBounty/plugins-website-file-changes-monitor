@@ -102,11 +102,19 @@ class Directory_Runner extends \MFM\WP_Background_Process {
 	/**
 	 * Unlock.
 	 *
+	 * Called at the end of every batch request. Directories found by task() are kept in memory
+	 * and saved only every BATCH_CHUNK_SIZE items, so save the remainder before this request ends.
+	 * Otherwise they are lost when the batch hits the time or memory limit, and the stored
+	 * directory list is incomplete.
+	 *
 	 * @return $this
 	 *
 	 * @since 2.0.0
+	 * @since 2.4.1 - Save queued directories before unlocking.
 	 */
 	protected function unlock_process() {
+		\MFM::flush_dir_runner_queue();
+
 		delete_site_transient( $this->identifier . '_process_lock' );
 		return $this;
 	}

@@ -66,6 +66,7 @@ class CLI_Commands extends \WP_CLI_Command {
 	 *  - plugin-file-permissions-changed
 	 *  - plugin-directory-permissions-changed
 	 *  - plugin-directory-removed
+	 *  - plugin-subdirectory-removed
 	 *  - plugin-directory-added
 	 *  - plugin-updated
 	 *  - theme-file-added
@@ -73,6 +74,7 @@ class CLI_Commands extends \WP_CLI_Command {
 	 *  - theme-file-renamed
 	 *  - theme-directory-permissions-changed
 	 *  - theme-directory-removed
+	 *  - theme-subdirectory-removed
 	 *  - theme-directory-added
 	 *  - theme-updated
 	 * ---

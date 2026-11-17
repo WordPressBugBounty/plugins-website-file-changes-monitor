@@ -3,7 +3,7 @@
         'name' => 'melapress/mfm',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '48305145f6e639d7cbe60cd50d96a0d104ca62d8',
+        'reference' => 'bba4bf55eeb42ab96ee11e31be5962ded29d08da',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'melapress/mfm' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '48305145f6e639d7cbe60cd50d96a0d104ca62d8',
+            'reference' => 'bba4bf55eeb42ab96ee11e31be5962ded29d08da',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

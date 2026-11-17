@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use MFM\DB_Handler;
+use MFM\MFM_Fast_Cache;
 use MFM\Helpers\Logger;
 use MFM\Helpers\Settings_Helper;
 
@@ -25,6 +26,15 @@ use MFM\Helpers\Settings_Helper;
  * @since 2.0.0
  */
 class Directory_And_File_Helpers {
+
+	/**
+	 * Paths of the scanner's own cache folder (as configured and its real path), set on first use.
+	 *
+	 * @var array
+	 *
+	 * @since 2.4.1
+	 */
+	private static $scanner_cache_paths = array();
 
 	/**
 	 * Gather directory info.
@@ -502,8 +512,14 @@ class Directory_And_File_Helpers {
 	 * @return boolean - Is to be ignored.
 	 *
 	 * @since 2.1.0
+	 * @since 2.4.1 - Always ignore the scanner's own cache folder.
 	 */
 	public static function is_path_ignored( $path ) {
+		// The scanner fills and clears its own cache folder during every scan, so never scan or report it.
+		if ( self::is_scanner_cache_path( $path ) ) {
+			return true;
+		}
+
 		$ignored_dirs = Settings_Helper::get_setting_cached( 'ignored_directories' );
 		$ignored_dirs = apply_filters( MFM_PREFIX . 'append_ignored_dirs', $ignored_dirs );
 
@@ -523,6 +539,73 @@ class Directory_And_File_Helpers {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Check if a path is the scanner's own cache folder or a folder/file inside it.
+	 *
+	 * @param string $path - Path to check.
+	 *
+	 * @return bool $is_cache_path - True when the path is inside the scanner's cache folder.
+	 *
+	 * @since 2.4.1
+	 */
+	private static function is_scanner_cache_path( $path ) {
+		if ( empty( self::$scanner_cache_paths ) ) {
+			if ( empty( MFM_Fast_Cache::$caching_directory ) ) {
+				MFM_Fast_Cache::setup_cache_path();
+			}
+
+			self::$scanner_cache_paths = self::build_scanner_cache_paths( MFM_Fast_Cache::$caching_directory, MFM_UPLOADS_DIR );
+		}
+
+		$path = \untrailingslashit( \wp_normalize_path( (string) $path ) );
+
+		foreach ( self::$scanner_cache_paths as $cache_path ) {
+			if ( '' === $cache_path ) {
+				continue;
+			}
+
+			if ( $path === $cache_path || str_starts_with( $path, $cache_path . '/' ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Build the list of paths of the scanner's cache folder: as configured, and its real path when uploads is a symlink.
+	 *
+	 * Scanned folders are stored with realpath(), so the real cache path must also be matched. The uploads folder
+	 * is resolved instead of the cache folder, because the cache folder may not be created yet.
+	 *
+	 * @param string $cache_dir - Configured cache folder path.
+	 * @param string $uploads_dir - Configured uploads folder path that contains the cache folder.
+	 *
+	 * @return array $cache_paths - Normalized cache folder paths, without trailing slashes.
+	 *
+	 * @since 2.4.1
+	 */
+	private static function build_scanner_cache_paths( $cache_dir, $uploads_dir ) {
+		$cache_path  = \untrailingslashit( \wp_normalize_path( (string) $cache_dir ) );
+		$cache_paths = array( $cache_path );
+
+		$uploads_path      = \trailingslashit( \wp_normalize_path( (string) $uploads_dir ) );
+		$real_uploads_path = realpath( (string) $uploads_dir );
+
+		if ( false === $real_uploads_path || ! str_starts_with( $cache_path, $uploads_path ) ) {
+			return $cache_paths;
+		}
+
+		$cache_sub_path  = substr( $cache_path, strlen( $uploads_path ) );
+		$real_cache_path = \trailingslashit( \wp_normalize_path( $real_uploads_path ) ) . $cache_sub_path;
+
+		if ( $real_cache_path !== $cache_path ) {
+			$cache_paths[] = $real_cache_path;
+		}
+
+		return $cache_paths;
 	}
 
 	/**

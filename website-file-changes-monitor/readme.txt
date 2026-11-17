@@ -4,9 +4,9 @@ Plugin URI: https://melapress.com/wordpress-file-monitor/
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl.html
 Tags: security, file monitor, malware detection, file security, file changes
-Requires at least: 5.0
+Requires at least: 5.3
 Tested up to: 7.1
-Stable tag: 2.4.0
+Stable tag: 2.4.1
 Requires PHP: 8.0
 
 Get email alerts for file and permission changes on your WordPress sites. No false positives!
@@ -148,18 +148,18 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 == Changelog ==
 
-= 2.4.0 (2026-08-26) =
+= 2.4.1 (2026-11-17) =
 
- * **New feature & functionality**
+ * **Functionality & plugin improvements**
 
-	 *  Added an optional in-plugin survey to help us understand how Melapress File Monitor is used.
+	 *  Added a dismissible Black Friday banner, scheduled to appear from November 17th through December 1st.
+	 *  Improved help text inside the setup wizard with more accurate information
 
- * **Functionality & plugin improvement**
+ * **Bug fixes**
 
-	 *  Changed the WP Activity Log integration event ID from `6073` to `6085` to avoid event ID conflicts.
-
- * **Bug fix**
-
-	 *  Fixed a PHP warning and fatal error when saving General Scanning settings while WordPress uses a time format without AM/PM.
+	 *  Fixed empty file alerts being saved and emailed when all files in an event have excluded extensions.
+	 *  Fixed an entire plugin or theme being reported as removed when only a subfolder was deleted. Folder events also no longer reuse details from unrelated folders in the same scan.
+	 *  Fixed false permission-change alerts for new folders caused by comparing their permissions with those of an unrelated folder.
+	 *  Excluded the scanner’s own temporary cache folder, melapress-file-monitor/mfm-tmp/, from scans to prevent alerts about its temporary files and folders.
 
 Refer to the complete [plugin changelog](https://melapress.com/support/kb/website-file-changes-monitor-plugin-changelog/?utm_source=wp+repo&utm_medium=repo+link&utm_campaign=wordpress_org&utm_content=mfm) for more detailed information about what was new, improved and fixed in previous version updates of Melapress File Monitor.

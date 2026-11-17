@@ -392,7 +392,7 @@ $scaner_running = ( get_site_option( MFM_PREFIX . 'scanner_running', false ) ) ?
 			</table>
 
 			<div id="mfm-wizard-purging">
-				<h3><?php esc_html_e( 'How much scan data would like you the plugin to keep?', 'website-file-changes-monitor' ); ?></h3>
+				<h3><?php esc_html_e( 'How much scan data would you like the plugin to keep?', 'website-file-changes-monitor' ); ?></h3>
 				<p class="description"><?php esc_html_e( 'By default, Melapress File Monitor retains only the scan results from the last scan, which are overwritten with each new scan. If you\'d like to keep data from multiple scans, please specify how many sets of results you wish to retain below.', 'website-file-changes-monitor' ); ?></p>
 				
 				<table class="form-table mfm-table">
